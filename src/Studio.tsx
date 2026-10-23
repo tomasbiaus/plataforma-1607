@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, FolderKanban, Users, Lock, Zap, LogOut, ArrowLeft, ArrowRight, Eye, Upload, Send, FileText, Plus, CornerDownRight, Copy, UserRound, KeyRound } from 'lucide-react';
-import { cn } from './lib/utils';
+import { cn, copyToClipboard } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Stepper } from './easyui/stepper';
 import { OriginDropdown } from './easyui/OriginDropdown';
@@ -481,10 +481,10 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
   const admin = esAdmin((sesion as any)?.persona);
   const [form, setForm] = useState<{ abierto: boolean; email: string; clave: string; proyecto: string; nombre: string }>({ abierto: false, email: '', clave: '', proyecto: '', nombre: '' });
   const [enviando, setEnviando] = useState(false);
-  const [clave, setClave] = useState<{ id: string; nombre: string } | null>(null);
+  const [clave, setClave] = useState<{ id: string; nombre: string; email?: string; password?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const copiar = (txt: string, msg = 'Copiado') => {
-    navigator.clipboard?.writeText(txt).then(() => toast(msg), () => toast(txt));
+    copyToClipboard(txt).then((ok) => toast(ok ? msg : 'No se pudo copiar automáticamente: seleccioná el texto y copialo'));
   };
   const generar = () => Array.from(crypto.getRandomValues(new Uint8Array(9))).map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
   const invitar = async () => {
@@ -499,7 +499,7 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
     const j = await r.json().catch(() => ({}));
     setEnviando(false);
     if (!r.ok) return setError(j.error ?? 'No se pudo crear el acceso.');
-    copiar(`Hola! Ya podés ver tu proyecto con 1607 en ${location.origin}\nUsuario: ${form.email}\nContraseña: ${form.clave}`, 'Acceso creado. Copié el mensaje con los datos para mandarle.');
+    setClave({ id: j.id ?? form.email, nombre: form.nombre || p.cliente, email: form.email.trim().toLowerCase(), password: form.clave });
     setForm({ abierto: false, email: '', clave: '', proyecto: '', nombre: '' });
     await recargar();
   };
@@ -530,9 +530,9 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
                 <span className="text-[12px] text-rojo">{error}</span>
-                <span className="flex gap-2"><Btn size="sm" variant="ghost" onClick={() => setForm({ ...form, abierto: false })}>Cancelar</Btn><Btn size="sm" disabled={enviando} onClick={invitar}>{enviando ? 'Creando…' : 'Crear y copiar datos'}</Btn></span>
+                <span className="flex gap-2"><Btn size="sm" variant="ghost" onClick={() => setForm({ ...form, abierto: false })}>Cancelar</Btn><Btn size="sm" disabled={enviando} onClick={invitar}>{enviando ? 'Creando…' : 'Crear acceso'}</Btn></span>
               </div>
-              <p className="text-[11px] text-text-muted mt-3">Al crearlo te copio un mensaje con el link, el usuario y la contraseña para que se lo mandes por WhatsApp o mail.</p>
+              <p className="text-[11px] text-text-muted mt-3">Al crearlo te muestro el mensaje con el link, el usuario y la contraseña provisoria para mandárselo por WhatsApp o mail. La primera vez que entre va a elegir la suya.</p>
             </Card>
           </motion.div>
         )}
@@ -597,12 +597,18 @@ function EquipoAccesos({ onClave }: { onClave: (id: string, nombre: string) => v
 }
 
 /* Genera una contraseña nueva (en el servidor) y la muestra una sola vez para pasársela */
-function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: string } | null; onClose: () => void }) {
+function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: string; email?: string; password?: string } | null; onClose: () => void }) {
   const toast = useToast();
   const [estado, setEstado] = useState<'pregunta' | 'generando' | 'lista'>('pregunta');
   const [res, setRes] = useState<{ email: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  React.useEffect(() => { if (persona) { setEstado('pregunta'); setRes(null); setError(null); } }, [persona?.id]);
+  React.useEffect(() => {
+    if (!persona) return;
+    setError(null);
+    // acceso recién creado: ya viene con la contraseña
+    if (persona.password && persona.email) { setRes({ email: persona.email, password: persona.password }); setEstado('lista'); }
+    else { setEstado('pregunta'); setRes(null); }
+  }, [persona?.id, persona?.password]);
   const generar = async () => {
     setEstado('generando'); setError(null);
     const { data: s } = await supabase.auth.getSession();
@@ -612,13 +618,13 @@ function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: 
     setRes({ email: j.email, password: j.password });
     setEstado('lista');
   };
-  const mensaje = res ? `Hola ${persona?.nombre ?? ''}! Tu acceso a la plataforma de 1607:\n${location.origin}\nUsuario: ${res.email}\nContraseña: ${res.password}\n\nCuando entres, cambiala desde "Mi cuenta".` : '';
+  const mensaje = res ? `Hola ${persona?.nombre ?? ''}! Tu acceso a la plataforma de 1607:\n${location.origin}\nUsuario: ${res.email}\nContraseña: ${res.password}\n\nLa primera vez que entres te va a pedir que elijas tu propia contraseña.` : '';
   return (
     <Sheet open={!!persona} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="max-w-[26rem]">
         <SheetHeader className="pt-6">
-          <SheetTitle className="text-[22px] font-bold tracking-[-0.03em] flex items-center gap-2"><KeyRound className="size-5" />Nueva contraseña</SheetTitle>
-          <SheetDescription className="text-[13px] text-text-muted">Para {persona?.nombre}. La contraseña actual deja de funcionar y se reemplaza por una nueva.</SheetDescription>
+          <SheetTitle className="text-[22px] font-bold tracking-[-0.03em] flex items-center gap-2"><KeyRound className="size-5" />{persona?.password ? 'Acceso creado' : 'Nueva contraseña'}</SheetTitle>
+          <SheetDescription className="text-[13px] text-text-muted">{persona?.password ? `Acceso creado para ${persona?.nombre}. Mandale estos datos; al entrar va a elegir su propia contraseña.` : `Para ${persona?.nombre}. La contraseña actual deja de funcionar y se reemplaza por una provisoria.`}</SheetDescription>
         </SheetHeader>
         <SheetBody className="space-y-4 pb-6">
           {estado !== 'lista' ? (
@@ -632,8 +638,15 @@ function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: 
                 <div><p className="text-[11px] text-text-muted">Usuario</p><p className="text-[14px] select-all">{res.email}</p></div>
                 <div><p className="text-[11px] text-text-muted">Contraseña</p><p className="text-[20px] font-mono font-bold tracking-wide select-all">{res.password}</p></div>
               </div>
-              <Btn className="w-full" onClick={() => navigator.clipboard?.writeText(mensaje).then(() => toast('Mensaje copiado: pegalo en WhatsApp o mail'), () => toast(mensaje))}><Copy className="size-3.5" />Copiar mensaje para mandarle</Btn>
-              <p className="text-[12px] text-text-muted">Se muestra una sola vez. Cuando entre, que la cambie desde <span className="text-text-primary">Mi cuenta</span>.</p>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] text-text-muted">Mensaje para mandarle</span>
+                <textarea readOnly value={mensaje} rows={6} onFocus={(e) => e.currentTarget.select()} className="w-full resize-none rounded-lg bg-surface-raised p-3 text-[12px] leading-relaxed outline-none focus:ring-2 focus:ring-[var(--accent-ring)]" />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <Btn onClick={() => copyToClipboard(mensaje).then((ok) => toast(ok ? 'Mensaje copiado' : 'No se pudo copiar: tocá el recuadro y copialo con Cmd+C'))}><Copy className="size-3.5" />Copiar</Btn>
+                <a href={'https://wa.me/?text=' + encodeURIComponent(mensaje)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full text-[13px] font-medium bg-[#25D366] text-white hover:brightness-95">WhatsApp</a>
+              </div>
+              <p className="text-[12px] text-text-muted">Se muestra una sola vez. Es provisoria: la primera vez que entre, la plataforma le pide elegir la suya.</p>
             </>
           )}
         </SheetBody>
