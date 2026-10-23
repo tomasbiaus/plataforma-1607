@@ -6,7 +6,7 @@ import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
 import { Avatar, Btn, TemaSwitch, useToast, ConfirmBtn } from './ui';
 import { useStore, useArchivo, type NuevoProyecto } from './store';
-import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, type Prioridad } from './data';
+import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, usuarioDe, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
 import { DatePicker, DateRangePicker } from './easyui/DatePicker';
@@ -396,7 +396,7 @@ export function CuentaSheet({ open, onClose }: { open: boolean; onClose: () => v
       <SheetContent side="right" className="max-w-[26rem]">
         <SheetHeader className="pt-6">
           <SheetTitle className="text-[22px] font-bold tracking-[-0.03em]">Mi cuenta</SheetTitle>
-          <SheetDescription className="text-[13px] text-text-muted">{email}</SheetDescription>
+          <SheetDescription className="text-[13px] text-text-muted">{usuarioDe(email)}</SheetDescription>
         </SheetHeader>
         <SheetBody className="space-y-8 pb-8">
           <section className="space-y-3">

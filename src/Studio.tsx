@@ -9,7 +9,7 @@ import { Logo, TemaSwitch, Avatar, AvatarStack, EstadoBadge, PillNav, Btn, Card,
 import { useStore, useTareas } from './store';
 import { TareaPanel, CuentaSheet } from './Paneles';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody } from './easyui/sheet';
-import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, type Proyecto, type Tarea } from './data';
+import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, aEmail, usuarioDe, usuarioValido, type Proyecto, type Tarea } from './data';
 import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
 import { Campanita } from './Campanita';
@@ -491,15 +491,16 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
     setError(null);
     const p = proyectos.find((x) => x.id === form.proyecto);
     if (!p) return setError('Elegí el proyecto.');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Escribí un email válido.');
+    const u = form.email.trim().toLowerCase();
+    if (u.includes('@') ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u) : !usuarioValido(u)) return setError('Usuario: de 3 a 30 letras o números, sin espacios (puede llevar . - _). O un email.');
     if (form.clave.length < 8) return setError('La contraseña tiene que tener al menos 8 caracteres.');
     setEnviando(true);
     const { data: s } = await supabase.auth.getSession();
-    const r = await fetch('/api/invitar', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.session?.access_token }, body: JSON.stringify({ email: form.email, password: form.clave, cliente_id: p.clienteId, nombre: form.nombre || p.cliente, rol: 'cliente' }) });
+    const r = await fetch('/api/invitar', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.session?.access_token }, body: JSON.stringify({ email: aEmail(form.email), password: form.clave, cliente_id: p.clienteId, nombre: form.nombre || p.cliente, rol: 'cliente' }) });
     const j = await r.json().catch(() => ({}));
     setEnviando(false);
     if (!r.ok) return setError(j.error ?? 'No se pudo crear el acceso.');
-    setClave({ id: j.id ?? form.email, nombre: form.nombre || p.cliente, email: form.email.trim().toLowerCase(), password: form.clave });
+    setClave({ id: j.id ?? form.email, nombre: form.nombre || p.cliente, email: aEmail(form.email), password: form.clave });
     setForm({ abierto: false, email: '', clave: '', proyecto: '', nombre: '' });
     await recargar();
   };
@@ -522,7 +523,7 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
                   {proyectos.map((p) => <option key={p.id} value={p.id}>{p.cliente} · {p.nombre}</option>)}
                 </select>
                 <input id="ac-nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre (opcional)" className={campo} />
-                <input id="ac-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@marca.com" className={campo} />
+                <input id="ac-email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value.replace(/\s/g, '').toLowerCase() })} placeholder="Usuario (ej: meso) o email" autoCapitalize="none" spellCheck={false} className={campo} />
                 <div className="flex gap-1.5">
                   <input id="ac-clave" value={form.clave} onChange={(e) => setForm({ ...form, clave: e.target.value })} placeholder="Contraseña" className={cn(campo, 'font-mono')} />
                   <Btn size="sm" variant="ghost" className="!h-10" onClick={() => setForm({ ...form, clave: generar() })}>Otra</Btn>
@@ -551,12 +552,12 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
               <tr key={p.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 font-medium">{p.cliente}</td>
                 <td className="px-4 py-3"><button onClick={() => abrir(p.id)} className="hover:underline underline-offset-2">{p.nombre}</button><span className="block text-[11px] text-text-muted">{etapaNombre(p.etapa)}</span></td>
-                <td className="px-4 py-3 text-text-secondary">{p.accesoCliente?.email ?? <span className="text-text-subtle">Sin acceso todavía</span>}</td>
+                <td className="px-4 py-3 text-text-secondary">{p.accesoCliente ? usuarioDe(p.accesoCliente.email) : <span className="text-text-subtle">Sin acceso todavía</span>}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   {p.accesoCliente && (
                     <span className="inline-flex items-center gap-1">
                       {admin && p.accesoCliente.id && <button onClick={() => setClave({ id: p.accesoCliente!.id!, nombre: p.cliente })} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] text-text-muted hover:text-text-primary hover:bg-surface-raised"><KeyRound className="size-3.5" />Nueva contraseña</button>}
-                      <button onClick={() => copiar(p.accesoCliente!.email, 'Email copiado')} aria-label="Copiar email" className="grid place-items-center size-7 rounded-full text-text-subtle hover:text-text-primary hover:bg-surface-raised"><Copy className="size-3.5" /></button>
+                      <button onClick={() => copiar(usuarioDe(p.accesoCliente!.email), 'Usuario copiado')} aria-label="Copiar usuario" className="grid place-items-center size-7 rounded-full text-text-subtle hover:text-text-primary hover:bg-surface-raised"><Copy className="size-3.5" /></button>
                     </span>
                   )}
                 </td>
@@ -618,7 +619,7 @@ function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: 
     setRes({ email: j.email, password: j.password });
     setEstado('lista');
   };
-  const mensaje = res ? `Hola ${persona?.nombre ?? ''}! Tu acceso a la plataforma de 1607:\n${location.origin}\nUsuario: ${res.email}\nContraseña: ${res.password}\n\nLa primera vez que entres te va a pedir que elijas tu propia contraseña.` : '';
+  const mensaje = res ? `Hola ${persona?.nombre ?? ''}! Tu acceso a la plataforma de 1607:\n${location.origin}\nUsuario: ${usuarioDe(res.email)}\nContraseña: ${res.password}\n\nLa primera vez que entres te va a pedir que elijas tu propia contraseña.` : '';
   return (
     <Sheet open={!!persona} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="max-w-[26rem]">
@@ -635,7 +636,7 @@ function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: 
           ) : res && (
             <>
               <div className="rounded-xl border border-border bg-surface-raised p-4 space-y-3">
-                <div><p className="text-[11px] text-text-muted">Usuario</p><p className="text-[14px] select-all">{res.email}</p></div>
+                <div><p className="text-[11px] text-text-muted">Usuario</p><p className="text-[14px] select-all">{usuarioDe(res.email)}</p></div>
                 <div><p className="text-[11px] text-text-muted">Contraseña</p><p className="text-[20px] font-mono font-bold tracking-wide select-all">{res.password}</p></div>
               </div>
               <label className="block space-y-1.5">

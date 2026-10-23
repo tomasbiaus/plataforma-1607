@@ -130,5 +130,12 @@ export const hace = (ts: string) => {
   return fecha(iso);
 };
 
+/* Usuarios sin email (clientes): por dentro se guardan como usuario@DOMINIO_USUARIOS, un dominio interno que nunca recibe mails */
+export const DOMINIO_USUARIOS = 'usuarios.plataforma-1607.local';
+export const aEmail = (v: string) => { const t = v.trim().toLowerCase(); return t.includes('@') ? t : `${t}@${DOMINIO_USUARIOS}`; };
+export const usuarioDe = (email?: string | null) => (email ?? '').endsWith('@' + DOMINIO_USUARIOS) ? email!.split('@')[0] : email ?? '';
+export const esUsuarioSinEmail = (email?: string | null) => (email ?? '').endsWith('@' + DOMINIO_USUARIOS);
+export const usuarioValido = (v: string) => /^[a-z0-9][a-z0-9._-]{2,29}$/.test(v.trim().toLowerCase());
+
 export const usd = (n: number) => 'USD ' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 export const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'cliente';

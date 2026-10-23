@@ -2,8 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { supabase } from './lib/supabase';
 import {
   CLIENTES, EQUIPO, ETAPAS, HOY, fecha, hace, esAdmin, adminId, slug,
-  type Proyecto, type Tarea, type EstadoEntrega, type EstadoTarea, type Pago, type CobroExtra, type PagoEquipo, type Entrega,
-} from './data';
+  type Proyecto, type Tarea, type EstadoEntrega, type EstadoTarea, type Pago, type CobroExtra, type PagoEquipo, type Entrega, aEmail } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 
 export type Sesion = { tipo: 'estudio'; persona: string } | { tipo: 'cliente'; proyecto: string } | null;
@@ -316,8 +315,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }, cobrosExtra, pagosEquipo, ajustes,
 
     entrar: async (mail, clave) => {
-      const { error } = await supabase.auth.signInWithPassword({ email: mail.trim().toLowerCase(), password: clave });
-      if (error) return error.message.includes('Invalid') ? 'El email o la contraseña no coinciden. Revisá los datos que te pasó el estudio.' : error.message;
+      const { error } = await supabase.auth.signInWithPassword({ email: aEmail(mail), password: clave });
+      if (error) return error.message.includes('Invalid') ? 'El usuario o la contraseña no coinciden. Revisá los datos que te pasó el estudio.' : error.message;
       setListo(false);
       await recargar();
       return null;

@@ -6,6 +6,7 @@ import { motionTransitions } from './lib/motion-tokens';
 import { cn } from './lib/utils';
 import { Logo, Btn, TemaSwitch } from './ui';
 import { useStore } from './store';
+import { usuarioDe } from './data';
 
 /* Basado en el Login de EasyUI: tarjeta centrada, sin login social ni registro (las claves las da el estudio) */
 export default function Login() {
@@ -26,6 +27,7 @@ export default function Login() {
   };
 
   const pedir = async () => {
+    if (!email.includes('@')) return setError('Si entrás con usuario, pedile una contraseña nueva al estudio por WhatsApp.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Escribí tu email arriba y volvé a tocar "Mandarme el link".');
     setEnviado('enviando');
     const err = await pedirRecuperacion(email);
@@ -35,7 +37,8 @@ export default function Login() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Escribí un email válido.');
+    if (!email.trim()) return setError('Escribí tu usuario o email.');
+    if (email.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Ese email no parece válido.');
     if (!pass) return setError('Escribí tu contraseña.');
     entrar(email);
   };
@@ -54,7 +57,7 @@ export default function Login() {
         <div className="relative flex flex-col items-center text-center mb-7">
           <Logo className="w-[72px] mb-5" />
           <h1 className="text-[22px] font-bold tracking-[-0.03em]">Ingresá a tu proyecto</h1>
-          <p className="text-[13px] text-text-muted mt-1.5 max-w-[30ch]">Con el email y la contraseña que te pasó el estudio.</p>
+          <p className="text-[13px] text-text-muted mt-1.5 max-w-[30ch]">Con el usuario y la contraseña que te pasó el estudio.</p>
         </div>
 
         <AnimatePresence>
@@ -69,7 +72,7 @@ export default function Login() {
         </AnimatePresence>
 
         <form onSubmit={submit} className="relative space-y-4" noValidate>
-          <LockInput id="login-email" label="Email" type="email" placeholder="nombre@marca.com" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} leftIcon={<Mail className="size-4" />} />
+          <LockInput id="login-email" label="Usuario o email" type="text" placeholder="tu usuario" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} leftIcon={<Mail className="size-4" />} />
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
@@ -91,7 +94,7 @@ export default function Login() {
                       <span>Listo. Si <span className="text-text-primary">{email}</span> tiene acceso, te llega un mail con un link para crear una contraseña nueva. Revisá también spam.</span>
                     ) : (
                       <span>
-                        Te mandamos un link a tu email para que crees una nueva.{' '}
+                        Si entrás con usuario, pedile una nueva al estudio. Si entrás con email, te mandamos un link.{' '}
                         <button type="button" disabled={enviado === 'enviando'} onClick={pedir} className="font-medium text-text-primary underline underline-offset-2 disabled:opacity-50">
                           {enviado === 'enviando' ? 'Enviando…' : 'Mandarme el link'}
                         </button>
@@ -150,7 +153,7 @@ export function NuevaClave({ primeraVez = false }: { primeraVez?: boolean }) {
           <Logo className="w-[72px] mb-5" />
           <h1 className="text-[22px] font-bold tracking-[-0.03em]">{primeraVez ? 'Elegí tu contraseña' : 'Creá tu contraseña nueva'}</h1>
           <p className="text-[13px] text-text-muted mt-1.5 max-w-[32ch]">{primeraVez ? 'Entraste con una contraseña provisoria. Elegí una tuya para seguir (mínimo 8 caracteres).' : 'Mínimo 8 caracteres. Después entrás directo.'}</p>
-          {primeraVez && email && <p className="text-[12px] text-text-subtle mt-2">{email}</p>}
+          {primeraVez && email && <p className="text-[12px] text-text-subtle mt-2">{usuarioDe(email)}</p>}
         </div>
         {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px] flex gap-2"><AlertCircle className="size-4 shrink-0" />{error}</div>}
         <LockInput id="nueva-pass" label="Nueva contraseña" type={ver ? 'text' : 'password'} autoComplete="new-password" value={nueva} onChange={(e) => { setNueva(e.target.value); setError(null); }} leftIcon={<Lock className="size-4" />} />

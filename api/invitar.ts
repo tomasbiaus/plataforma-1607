@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 2) Datos del nuevo acceso
   const { email, password, nombre, rol = 'cliente', cliente_id = null, rol_texto = '', iniciales = '', color } = req.body ?? {};
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Usuario o email inválido' });
   if (!password || String(password).length < 8) return res.status(400).json({ error: 'La contraseña tiene que tener al menos 8 caracteres' });
   if (!['cliente', 'equipo'].includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
   if (rol === 'cliente' && !cliente_id) return res.status(400).json({ error: 'Falta el cliente' });
@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     user_metadata: { nombre },
   });
   if (error) {
-    const msg = /already|registered|exists/i.test(error.message) ? 'Ya existe una cuenta con ese email' : error.message;
+    const msg = /already|registered|exists/i.test(error.message) ? 'Ya existe una cuenta con ese usuario o email' : error.message;
     return res.status(400).json({ error: msg });
   }
 
