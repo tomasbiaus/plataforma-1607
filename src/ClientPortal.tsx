@@ -6,7 +6,7 @@ import { motionTransitions } from './lib/motion-tokens';
 import { Stepper } from './easyui/stepper';
 import { DragToConfirm } from './easyui/DragToConfirm';
 import { UnfoldAccordion } from './easyui/UnfoldAccordion';
-import { Logo, Avatar, EstadoBadge, PillNav, Btn, Card, Preview, Fade, useToast } from './ui';
+import { Logo, TemaSwitch, Avatar, EstadoBadge, PillNav, Btn, Card, Preview, Fade, useToast } from './ui';
 import { useStore } from './store';
 import { CuentaSheet } from './Paneles';
 import { ETAPAS, ETAPA_DESC, persona, usd, type Proyecto, type Entrega } from './data';
@@ -41,6 +41,7 @@ export default function ClientPortal({ proyectoId, preview = false, onSalirPrevi
             <PillNav items={[{ id: 'proyecto', label: 'Proyecto' }, { id: 'entregables', label: 'Entregables', count: visibles.length }]} value={tab} onChange={(v) => setTab(v as Tab)} />
           </div>
           <div className="flex items-center gap-2">
+            <TemaSwitch />
             {!preview && (
               <button onClick={() => setCuenta(true)} aria-label="Mi cuenta" title="Mi cuenta: contraseña y apariencia" className="glass grid place-items-center size-9 rounded-full text-text-secondary hover:text-text-primary">
                 <UserRound className="size-4" />

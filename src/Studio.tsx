@@ -83,7 +83,10 @@ export default function Studio({ yo }: { yo: string }) {
       <header className="lg:hidden sticky z-30 gutter pt-3 pb-3 bg-[var(--bg)]/90 backdrop-blur-xl border-b border-border" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center justify-between mb-3">
           <Logo className="w-[52px]" />
-          <button onClick={() => setCuenta(true)} className="flex items-center gap-2 text-[12px] text-text-muted" aria-label="Mi cuenta"><Avatar id={yo} size={26} /> Mi cuenta</button>
+          <div className="flex items-center gap-2">
+            <TemaSwitch />
+            <button onClick={() => setCuenta(true)} className="flex items-center gap-2 text-[12px] text-text-muted" aria-label="Mi cuenta"><Avatar id={yo} size={26} /><span className="hidden sm:inline">Mi cuenta</span></button>
+          </div>
         </div>
         <PillNav size="sm" items={nav.map((n) => ({ id: n.id, label: n.label }))} value={vista} onChange={ir} />
       </header>
