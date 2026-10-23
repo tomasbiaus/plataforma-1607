@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, FolderKanban, Users, Lock, Zap, LogOut, ArrowLeft, ArrowRight, Eye, Upload, Send, FileText, Plus, CornerDownRight, Copy, UserRound } from 'lucide-react';
+import { LayoutGrid, FolderKanban, Users, Lock, Zap, LogOut, ArrowLeft, ArrowRight, Eye, Upload, Send, FileText, Plus, CornerDownRight, Copy, UserRound, KeyRound } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Stepper } from './easyui/stepper';
@@ -8,6 +8,7 @@ import { OriginDropdown } from './easyui/OriginDropdown';
 import { Logo, TemaSwitch, Avatar, AvatarStack, EstadoBadge, PillNav, Btn, Card, EtapaBar, Preview, Fade, useToast } from './ui';
 import { useStore, useTareas } from './store';
 import { TareaPanel, CuentaSheet } from './Paneles';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody } from './easyui/sheet';
 import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, type Proyecto, type Tarea } from './data';
 import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
@@ -480,6 +481,7 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
   const admin = esAdmin((sesion as any)?.persona);
   const [form, setForm] = useState<{ abierto: boolean; email: string; clave: string; proyecto: string; nombre: string }>({ abierto: false, email: '', clave: '', proyecto: '', nombre: '' });
   const [enviando, setEnviando] = useState(false);
+  const [clave, setClave] = useState<{ id: string; nombre: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const copiar = (txt: string, msg = 'Copiado') => {
     navigator.clipboard?.writeText(txt).then(() => toast(msg), () => toast(txt));
@@ -535,6 +537,8 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
           </motion.div>
         )}
       </AnimatePresence>
+      {admin && <EquipoAccesos onClave={(id, nombre) => setClave({ id, nombre })} />}
+      <p className="eyebrow mb-3">Clientes</p>
       <Card className="scroll-x">
         <table className="w-full text-left text-[13px] min-w-[600px]">
           <thead>
@@ -548,13 +552,92 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
                 <td className="px-4 py-3 font-medium">{p.cliente}</td>
                 <td className="px-4 py-3"><button onClick={() => abrir(p.id)} className="hover:underline underline-offset-2">{p.nombre}</button><span className="block text-[11px] text-text-muted">{etapaNombre(p.etapa)}</span></td>
                 <td className="px-4 py-3 text-text-secondary">{p.accesoCliente?.email ?? <span className="text-text-subtle">Sin acceso todavía</span>}</td>
-                <td className="px-4 py-3 text-right">{p.accesoCliente && <button onClick={() => copiar(p.accesoCliente!.email, 'Email copiado')} aria-label="Copiar email" className="text-text-subtle hover:text-text-primary"><Copy className="size-3.5" /></button>}</td>
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  {p.accesoCliente && (
+                    <span className="inline-flex items-center gap-1">
+                      {admin && p.accesoCliente.id && <button onClick={() => setClave({ id: p.accesoCliente!.id!, nombre: p.cliente })} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] text-text-muted hover:text-text-primary hover:bg-surface-raised"><KeyRound className="size-3.5" />Nueva contraseña</button>}
+                      <button onClick={() => copiar(p.accesoCliente!.email, 'Email copiado')} aria-label="Copiar email" className="grid place-items-center size-7 rounded-full text-text-subtle hover:text-text-primary hover:bg-surface-raised"><Copy className="size-3.5" /></button>
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </Card>
       <p className="text-[12px] text-text-muted mt-4 flex items-center gap-1.5"><FileText className="size-3.5" />Cada cliente ve solo su proyecto: etapas, entregas enviadas y archivos. Lo que está “En el estudio” no lo ve.</p>
+      <NuevaClaveSheet persona={clave} onClose={() => setClave(null)} />
     </div>
+  );
+}
+
+/* Equipo: accesos de Matías, Camila… con botón para generar contraseña nueva */
+function EquipoAccesos({ onClave }: { onClave: (id: string, nombre: string) => void }) {
+  const equipo = EQUIPO.filter((m) => !m.esAdmin);
+  return (
+    <div className="mb-8">
+      <p className="eyebrow mb-3">Equipo</p>
+      <Card>
+        <ul className="divide-y divide-border">
+          {equipo.map((m) => (
+            <li key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <Avatar id={m.id} size={30} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium">{m.nombre} <span className="font-normal text-text-muted">· {m.rol}</span></span>
+                <span className="block text-[12px] text-text-muted truncate">{m.email}</span>
+              </span>
+              <button onClick={() => onClave(m.id, m.nombre)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium bg-surface-raised text-text-secondary hover:text-text-primary hover:bg-border"><KeyRound className="size-3.5" />Nueva contraseña</button>
+            </li>
+          ))}
+          {!equipo.length && <li className="px-4 py-6 text-[13px] text-text-muted">Todavía no hay nadie más en el equipo.</li>}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+/* Genera una contraseña nueva (en el servidor) y la muestra una sola vez para pasársela */
+function NuevaClaveSheet({ persona, onClose }: { persona: { id: string; nombre: string } | null; onClose: () => void }) {
+  const toast = useToast();
+  const [estado, setEstado] = useState<'pregunta' | 'generando' | 'lista'>('pregunta');
+  const [res, setRes] = useState<{ email: string; password: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  React.useEffect(() => { if (persona) { setEstado('pregunta'); setRes(null); setError(null); } }, [persona?.id]);
+  const generar = async () => {
+    setEstado('generando'); setError(null);
+    const { data: s } = await supabase.auth.getSession();
+    const r = await fetch('/api/clave', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.session?.access_token }, body: JSON.stringify({ id: persona!.id }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setEstado('pregunta'); return setError(j.error ?? 'No se pudo generar la contraseña.'); }
+    setRes({ email: j.email, password: j.password });
+    setEstado('lista');
+  };
+  const mensaje = res ? `Hola ${persona?.nombre ?? ''}! Tu acceso a la plataforma de 1607:\n${location.origin}\nUsuario: ${res.email}\nContraseña: ${res.password}\n\nCuando entres, cambiala desde "Mi cuenta".` : '';
+  return (
+    <Sheet open={!!persona} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="max-w-[26rem]">
+        <SheetHeader className="pt-6">
+          <SheetTitle className="text-[22px] font-bold tracking-[-0.03em] flex items-center gap-2"><KeyRound className="size-5" />Nueva contraseña</SheetTitle>
+          <SheetDescription className="text-[13px] text-text-muted">Para {persona?.nombre}. La contraseña actual deja de funcionar y se reemplaza por una nueva.</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="space-y-4 pb-6">
+          {estado !== 'lista' ? (
+            <>
+              {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px]">{error}</div>}
+              <Btn className="w-full" disabled={estado === 'generando'} onClick={generar}>{estado === 'generando' ? 'Generando…' : 'Generar contraseña nueva'}</Btn>
+            </>
+          ) : res && (
+            <>
+              <div className="rounded-xl border border-border bg-surface-raised p-4 space-y-3">
+                <div><p className="text-[11px] text-text-muted">Usuario</p><p className="text-[14px] select-all">{res.email}</p></div>
+                <div><p className="text-[11px] text-text-muted">Contraseña</p><p className="text-[20px] font-mono font-bold tracking-wide select-all">{res.password}</p></div>
+              </div>
+              <Btn className="w-full" onClick={() => navigator.clipboard?.writeText(mensaje).then(() => toast('Mensaje copiado: pegalo en WhatsApp o mail'), () => toast(mensaje))}><Copy className="size-3.5" />Copiar mensaje para mandarle</Btn>
+              <p className="text-[12px] text-text-muted">Se muestra una sola vez. Cuando entre, que la cambie desde <span className="text-text-primary">Mi cuenta</span>.</p>
+            </>
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

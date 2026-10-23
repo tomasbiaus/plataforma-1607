@@ -46,6 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     rol,
     cliente_id: rol === 'cliente' ? cliente_id : null,
     rol_texto,
+    debe_cambiar_clave: true,
     iniciales: iniciales || String(nombre || email).slice(0, 2).toUpperCase(),
     ...(color ? { color } : {}),
   }).eq('id', creado.user.id);

@@ -123,8 +123,8 @@ export default function Login() {
 }
 
 /* Pantalla a la que se llega desde el mail de "olvidé mi contraseña" */
-export function NuevaClave() {
-  const { cambiarClave, terminarRecuperacion, recargar } = useStore();
+export function NuevaClave({ primeraVez = false }: { primeraVez?: boolean }) {
+  const { cambiarClave, terminarRecuperacion, recargar, salir, email } = useStore();
   const [nueva, setNueva] = useState('');
   const [repetir, setRepetir] = useState('');
   const [ver, setVer] = useState(false);
@@ -148,14 +148,16 @@ export function NuevaClave() {
         className="w-full max-w-[400px] rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-[var(--shadow-elevated)] space-y-4">
         <div className="flex flex-col items-center text-center mb-3">
           <Logo className="w-[72px] mb-5" />
-          <h1 className="text-[22px] font-bold tracking-[-0.03em]">Creá tu contraseña nueva</h1>
-          <p className="text-[13px] text-text-muted mt-1.5">Mínimo 8 caracteres. Después entrás directo.</p>
+          <h1 className="text-[22px] font-bold tracking-[-0.03em]">{primeraVez ? 'Elegí tu contraseña' : 'Creá tu contraseña nueva'}</h1>
+          <p className="text-[13px] text-text-muted mt-1.5 max-w-[32ch]">{primeraVez ? 'Entraste con una contraseña provisoria. Elegí una tuya para seguir (mínimo 8 caracteres).' : 'Mínimo 8 caracteres. Después entrás directo.'}</p>
+          {primeraVez && email && <p className="text-[12px] text-text-subtle mt-2">{email}</p>}
         </div>
         {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px] flex gap-2"><AlertCircle className="size-4 shrink-0" />{error}</div>}
         <LockInput id="nueva-pass" label="Nueva contraseña" type={ver ? 'text' : 'password'} autoComplete="new-password" value={nueva} onChange={(e) => { setNueva(e.target.value); setError(null); }} leftIcon={<Lock className="size-4" />} />
         <LockInput id="nueva-pass2" label="Repetila" type={ver ? 'text' : 'password'} autoComplete="new-password" value={repetir} onChange={(e) => { setRepetir(e.target.value); setError(null); }} leftIcon={<Lock className="size-4" />} />
         <label className="flex items-center gap-2 text-[12px] text-text-muted cursor-pointer select-none"><input type="checkbox" checked={ver} onChange={(e) => setVer(e.target.checked)} className="accent-[var(--rojo)]" />Mostrar</label>
         <Btn type="submit" className="w-full !h-11 !rounded-lg" disabled={loading}>{loading ? 'Guardando…' : <>Guardar y entrar <ArrowRight className="size-4" /></>}</Btn>
+        {primeraVez && <button type="button" onClick={() => salir()} className="w-full text-center text-[12px] text-text-muted hover:text-text-primary">No soy yo, salir</button>}
       </motion.form>
     </div>
   );

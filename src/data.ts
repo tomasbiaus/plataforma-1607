@@ -80,7 +80,7 @@ export type Proyecto = {
   equipo: string[];
   ronda?: { actual: number; total: number };
   colores: [string, string, string];
-  accesoCliente: { email: string; ultimaVisita: string } | null;
+  accesoCliente: { email: string; ultimaVisita: string; id?: string } | null;
   entregas: Entrega[];
   pagos: Pago[];
   actividad: Actividad[];

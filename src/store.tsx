@@ -33,6 +33,8 @@ type Store = {
   salir: () => Promise<void>;
   /** true cuando la persona entró desde el mail de "olvidé mi contraseña" */
   recuperando: boolean;
+  /** entró con una contraseña provisoria y tiene que elegir la suya */
+  debeCambiarClave: boolean;
   cambiarClave: (nueva: string, actual?: string) => Promise<string | null>;
   pedirRecuperacion: (email: string) => Promise<string | null>;
   terminarRecuperacion: () => void;
@@ -108,6 +110,7 @@ const quienDe = (tipo: string, quien: string | null) => (tipo === 'auto' ? 'auto
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [listo, setListo] = useState(false);
   const [recuperando, setRecuperando] = useState(VIENE_DE_RECUPERACION);
+  const [debeCambiarClave, setDebeCambiarClave] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sesion, setSesion] = useState<Sesion>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -172,6 +175,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (err) { setError(err.message); setListo(true); return; }
 
     const yo = (perfiles.data ?? []).find((p: any) => p.id === u.user!.id);
+    setDebeCambiarClave(!!yo?.debe_cambiar_clave);
     // equipo
     EQUIPO.splice(0, EQUIPO.length, ...(perfiles.data ?? []).filter((p: any) => p.rol !== 'cliente').sort((a: any, b: any) => (a.rol === 'admin' ? -1 : b.rol === 'admin' ? 1 : a.nombre.localeCompare(b.nombre))).map((p: any) => ({
       id: p.id, nombre: p.nombre, rol: p.rol_texto, iniciales: p.iniciales || p.nombre.slice(0, 2).toUpperCase(), tono: p.color, esAdmin: p.rol === 'admin', email: p.email,
@@ -180,8 +184,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     Object.keys(CLIENTES).forEach((k) => delete CLIENTES[k]);
     (clientes.data ?? []).forEach((c: any) => { CLIENTES[c.clave] = { id: c.id, nombre: c.nombre, color: c.color }; });
     const clavePorId: Record<string, string> = Object.fromEntries((clientes.data ?? []).map((c: any) => [c.id, c.clave]));
-    const accesos: Record<string, string> = {};
-    (perfiles.data ?? []).filter((p: any) => p.rol === 'cliente' && p.cliente_id).forEach((p: any) => { accesos[p.cliente_id] = p.email; });
+    const accesos: Record<string, { email: string; id: string }> = {};
+    (perfiles.data ?? []).filter((p: any) => p.rol === 'cliente' && p.cliente_id).forEach((p: any) => { accesos[p.cliente_id] = { email: p.email, id: p.id }; });
 
     const lista: Proyecto[] = (proys.data ?? []).map((r: any) => {
       const cl = (clientes.data ?? []).find((c: any) => c.id === r.cliente_id);
@@ -198,7 +202,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         equipo: (peq.data ?? []).filter((x: any) => x.proyecto_id === r.id).map((x: any) => x.profile_id),
         ronda: r.ronda_total ? { actual: r.ronda_actual ?? 1, total: r.ronda_total } : undefined,
         colores: [r.colores?.[0] ?? '#E9E6DF', r.colores?.[1] ?? '#2B2B2B', r.colores?.[2] ?? '#C74227'],
-        accesoCliente: accesos[r.cliente_id] ? { email: accesos[r.cliente_id], ultimaVisita: '' } : null,
+        accesoCliente: accesos[r.cliente_id] ? { email: accesos[r.cliente_id].email, id: accesos[r.cliente_id].id, ultimaVisita: '' } : null,
         entregas, pagos: [],
         actividad: (acts.data ?? []).filter((a: any) => a.proyecto_id === r.id).map((a: any) => ({ quien: quienDe(a.tipo, a.quien), texto: a.texto, cuando: hace(a.creado), ts: a.creado })),
       };
@@ -318,7 +322,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await recargar();
       return null;
     },
-    recuperando,
+    recuperando, debeCambiarClave,
     cambiarClave: async (nueva, actual) => {
       if (nueva.length < 8) return 'La contraseña tiene que tener al menos 8 caracteres.';
       if (actual !== undefined) {
@@ -329,7 +333,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (error) return 'La contraseña actual no es correcta.';
       }
       const { error } = await supabase.auth.updateUser({ password: nueva });
-      return error ? errorClave(error.message) : null;
+      if (error) return errorClave(error.message);
+      await supabase.rpc('clave_cambiada').then(() => {}, () => {});
+      setDebeCambiarClave(false);
+      return null;
     },
     pedirRecuperacion: async (mail) => {
       const { error } = await supabase.auth.resetPasswordForEmail(mail.trim().toLowerCase(), { redirectTo: window.location.origin });

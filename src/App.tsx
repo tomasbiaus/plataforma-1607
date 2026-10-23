@@ -27,8 +27,9 @@ function Cargando() {
 }
 
 function Router() {
-  const { sesion, listo, error, salir, recuperando } = useStore();
+  const { sesion, listo, error, salir, recuperando, debeCambiarClave } = useStore();
   if (recuperando) return <NuevaClave />;
+  if (listo && sesion && debeCambiarClave) return <NuevaClave primeraVez />;
   if (!listo) return <Cargando />;
   if (error && !sesion) {
     return (
