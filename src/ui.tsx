@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useId, useState } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Sun, Moon, Monitor } from 'lucide-react';
 import { useTema, type Tema } from './lib/tema';
+import { GaleriaArchivos } from './Archivos';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import logoSvg from './logo.svg?raw';
@@ -178,6 +179,8 @@ export const Preview = ({ p, e, className }: { p: Proyecto; e: Entrega; classNam
   const [a, b, c] = p.colores;
   const word = (p.cliente.startsWith('Dr.') ? p.cliente.split(' ').pop()! : p.cliente.split(' ')[0]).toLowerCase();
   const base = 'relative overflow-hidden rounded-xl aspect-[4/3] w-full [container-type:inline-size]';
+  // archivos reales subidos: se ve cada uno con su propia vista previa
+  if (e.archivos.some((x) => x.path)) return <GaleriaArchivos archivos={e.archivos} className={className} />;
   if (!e.archivos.length) {
     return (
       <div className={cn(base, 'grid place-items-center border border-dashed border-border-hover bg-[var(--bg)]', className)}>

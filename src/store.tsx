@@ -42,6 +42,8 @@ type Store = {
   setEstadoEntrega: (pid: string, eid: string, estado: EstadoEntrega, feedback?: { autor: string; texto: string }) => Promise<void>;
   subirArchivo: (pid: string, eid: string, file: File) => Promise<void>;
   urlArchivo: (path: string) => Promise<string | null>;
+  /** link para ver el archivo en la página (sin descargar), dura 1 hora */
+  urlVista: (path: string) => Promise<string | null>;
   toggleTarea: (tid: string) => void;
   setEstadoTarea: (tid: string, e: EstadoTarea) => void;
   agregarTarea: (t: Omit<Tarea, 'id'>) => Promise<void>;
@@ -77,6 +79,7 @@ type Store = {
 };
 
 const Ctx = createContext<Store>(null as any);
+const cacheVista = new Map<string, { url: string; vence: number }>();
 const mapNotif = (n: any): Notificacion => ({ id: n.id, tipo: n.tipo, texto: n.texto, detalle: n.detalle, actor: n.actor, proyecto: n.proyecto_id, tarea: n.tarea_id, leida: n.leida, creado: n.creado });
 
 // El link de recuperación llega con #...type=recovery; lo miramos antes de que Supabase limpie la URL
@@ -374,6 +377,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.from('archivos').insert({ entrega_id: eid, nombre: file.name, tipo: (file.name.split('.').pop() ?? '').toUpperCase().slice(0, 4), peso, storage_path: path });
       if (error) fallo(error);
       await recargar();
+    },
+    urlVista: async (path) => {
+      const c = cacheVista.get(path);
+      if (c && c.vence > Date.now()) return c.url;
+      const { data, error } = await supabase.storage.from('entregas').createSignedUrl(path, 3600);
+      if (error || !data) return null;
+      cacheVista.set(path, { url: data.signedUrl, vence: Date.now() + 50 * 60 * 1000 });
+      return data.signedUrl;
     },
     urlArchivo: async (path) => {
       const { data, error } = await supabase.storage.from('entregas').createSignedUrl(path, 120, { download: true });
