@@ -22,7 +22,9 @@ Stack: React + Vite (front), Supabase (base de datos, login y archivos), Vercel 
    - `service_role` key (**secreta**: nunca va en el código ni en el navegador)
 
 ### 2. Cargar el equipo y los datos
-En tu compu, dentro de esta carpeta:
+**Sin terminal:** en Authentication → Users → Add user → Create new user, creá los 3 usuarios del equipo (con "Auto Confirm User" tildado). Después pegá `supabase/seed_datos.sql` en el SQL Editor y corré.
+
+**Con terminal** (alternativa), dentro de esta carpeta:
 ```bash
 cp .env.example .env      # y completá las 3 variables
 npm install
