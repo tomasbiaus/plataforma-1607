@@ -13,6 +13,7 @@ import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
 import Proyectos, { TareaRow } from './Proyectos';
 import Numeros from './Numeros';
+import { DatePicker } from './easyui/DatePicker';
 
 type Vista = 'resumen' | 'proyectos' | 'clientes' | 'numeros';
 const NAV: { id: Vista; label: string; icon: React.ElementType }[] = [
@@ -348,10 +349,10 @@ function EditarFechas({ p, onListo }: { p: Proyecto; onListo: () => void }) {
   const campo = 'h-10 w-full rounded-lg bg-surface-raised px-3 text-[13px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]';
   return (
     <div className="mt-4 pt-4 border-t border-border grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Arrancó</span><input id={'ef-ini-' + p.id} type="date" value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} className={campo} /></label>
-      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Entrega final</span><input id={'ef-fin-' + p.id} type="date" value={f.entrega_final} onChange={(e) => setF({ ...f, entrega_final: e.target.value })} className={campo} /></label>
+      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Arrancó</span><DatePicker id={'ef-ini-' + p.id} value={f.inicio} onChange={(d) => setF({ ...f, inicio: d ?? '' })} placeholder="Sin fecha" /></label>
+      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Entrega final</span><DatePicker id={'ef-fin-' + p.id} value={f.entrega_final} onChange={(d) => setF({ ...f, entrega_final: d ?? '' })} placeholder="Sin fecha" /></label>
       <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Próximo hito</span><input id={'ef-hito-' + p.id} value={f.hito_titulo} onChange={(e) => setF({ ...f, hito_titulo: e.target.value })} placeholder="Ej: Presentación de conceptos" className={campo} /></label>
-      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Fecha del hito</span><input id={'ef-hf-' + p.id} type="date" value={f.hito_fecha} onChange={(e) => setF({ ...f, hito_fecha: e.target.value })} className={campo} /></label>
+      <label className="space-y-1.5"><span className="text-[12px] text-text-muted">Fecha del hito</span><DatePicker id={'ef-hf-' + p.id} value={f.hito_fecha} onChange={(d) => setF({ ...f, hito_fecha: d ?? '' })} placeholder="Sin fecha" /></label>
       <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-2"><Btn size="sm" variant="ghost" onClick={onListo}>Cancelar</Btn><Btn size="sm" onClick={guardar}>Guardar</Btn></div>
     </div>
   );

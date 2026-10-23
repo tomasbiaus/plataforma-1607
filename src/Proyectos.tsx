@@ -8,6 +8,7 @@ import { useStore, useTareas, useArchivo } from './store';
 import { NuevoProyectoSheet, AutomatizacionesSheet, ArchivoSheet } from './Paneles';
 import { GooeyMenu } from './easyui/GooeyMenu';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
+import { DatePicker } from './easyui/DatePicker';
 
 /* ───────── piezas compartidas ───────── */
 
@@ -310,7 +311,7 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
       <td className="px-3 py-2"><select id="nt-quien" aria-label="Responsable" value={quien} onChange={(e) => setQuien(e.target.value)} className={sel}>{EQUIPO.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></td>
       <td className="px-3 py-2 text-[12px] text-text-muted">Sin empezar</td>
       <td className="px-3 py-2 text-[12px] text-text-muted">Media</td>
-      <td className="px-3 py-2"><input id="nt-fecha" type="date" aria-label="Fecha" value={dia} onChange={(e) => setDia(e.target.value)} className={sel} /></td>
+      <td className="px-3 py-2"><DatePicker id="nt-fecha" aria-label="Fecha" value={dia} onChange={(d) => setDia(d ?? '')} placeholder="Fecha" corto className="h-8 text-[12px]" /></td>
       <td className="px-3 py-2"><div className="flex gap-1"><Btn size="sm" onClick={guardar}>Guardar</Btn><Btn size="sm" variant="ghost" onClick={onDone}>Cancelar</Btn></div></td>
     </tr>
   );

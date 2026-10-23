@@ -9,6 +9,7 @@ import { useStore, useArchivo, type NuevoProyecto } from './store';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
+import { DatePicker, DateRangePicker } from './easyui/DatePicker';
 
 const quienNombre = (q: string) => (q === 'auto' ? 'Automatización' : q === 'cliente' ? 'Cliente' : persona(q)?.nombre ?? q);
 
@@ -74,9 +75,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                   })}
                 </Prop>
                 <Prop label="Fecha">
-                  <input type="date" aria-label="Desde" value={t.inicio ?? ''} onChange={(e) => actualizarTarea(t.id, { inicio: e.target.value || null }, 'cambió la fecha')} className="h-7 rounded-md bg-surface-raised px-2 text-[12px] outline-none" />
-                  <span className="text-text-subtle text-[12px]">→</span>
-                  <input type="date" aria-label="Hasta" value={t.fin ?? ''} onChange={(e) => actualizarTarea(t.id, { fin: e.target.value || null }, 'cambió la fecha límite')} className="h-7 rounded-md bg-surface-raised px-2 text-[12px] outline-none" />
+                  <DateRangePicker aria-label="Fechas de la tarea" desde={t.inicio} hasta={t.fin} placeholder="Sin fecha" onChange={(d, h) => actualizarTarea(t.id, { inicio: d, fin: h }, d ? 'cambió la fecha' : 'sacó la fecha')} />
                 </Prop>
                 <Prop label="Equipo">
                   {(['Brand Strategist', 'Design'] as const).map((eq) => {
@@ -257,7 +256,7 @@ export function NuevoProyectoSheet({ open, onClose, onCreado }: { open: boolean;
         <SheetBody className="space-y-6 pb-6">
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="space-y-1.5 sm:col-span-2"><span className="text-[12px] text-text-muted">Cliente</span><input id="np-cliente" className={campo} value={f.cliente} onChange={(e) => { setF({ ...f, cliente: e.target.value }); setError(null); }} placeholder="Ej: Café Nómade" /></label>
-            <label className="space-y-1.5 sm:col-span-2"><span className="text-[12px] text-text-muted">Arranca el</span><input id="np-inicio" type="date" className={campo} value={f.inicio} onChange={(e) => setF({ ...f, inicio: e.target.value })} /></label>
+            <label className="space-y-1.5 sm:col-span-2"><span className="text-[12px] text-text-muted">Arranca el</span><DatePicker id="np-inicio" value={f.inicio} onChange={(d) => setF({ ...f, inicio: d ?? HOY })} /></label>
           </div>
 
           <div>
