@@ -116,10 +116,10 @@ export default function PagosEquipo() {
                       <div className="flex items-center gap-2.5">
                         <div className="min-w-[132px]">
                           <div className="h-1.5 rounded-full bg-surface-raised overflow-hidden">
-                            <motion.div className={cn('h-full', resta ? 'bg-rojo' : 'bg-[#3F8C55]')} initial={false} animate={{ width: pctPagado + '%' }} transition={motionTransitions.springGentle} />
+                            <motion.div className={cn('h-full', resta ? 'bg-rojo' : 'bg-ok')} initial={false} animate={{ width: pctPagado + '%' }} transition={motionTransitions.springGentle} />
                           </div>
                           <p className="text-[11px] mt-1 tnum">
-                            {resta === 0 ? <span className="text-[#2F6B41]">Pagado{x.cuando ? ` · ${x.cuando.toLowerCase()}` : ''}</span> : x.pagado > 0 ? <span>Pagó {usd(x.pagado)} · <span className="text-rojo">falta {usd(resta)}</span></span> : <span className="text-rojo">Falta {usd(resta)}</span>}
+                            {resta === 0 ? <span className="text-ok-fg">Pagado{x.cuando ? ` · ${x.cuando.toLowerCase()}` : ''}</span> : x.pagado > 0 ? <span>Pagó {usd(x.pagado)} · <span className="text-rojo">falta {usd(resta)}</span></span> : <span className="text-rojo">Falta {usd(resta)}</span>}
                           </p>
                         </div>
                         <AnimatePresence initial={false}>

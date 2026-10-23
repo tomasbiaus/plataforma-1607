@@ -1,10 +1,46 @@
 import React, { createContext, useCallback, useContext, useId, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+import { Check, X, Sun, Moon, Monitor } from 'lucide-react';
+import { useTema, type Tema } from './lib/tema';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import logoSvg from './logo.svg?raw';
 import { EQUIPO, type EstadoEntrega, type Proyecto, type Entrega } from './data';
+
+const TEMAS: { id: Tema; label: string; icon: typeof Sun }[] = [
+  { id: 'claro', label: 'Claro', icon: Sun },
+  { id: 'oscuro', label: 'Oscuro', icon: Moon },
+  { id: 'sistema', label: 'Automático (según tu dispositivo)', icon: Monitor },
+];
+
+/** Selector de tema: claro / oscuro / automático */
+export function TemaSwitch({ className, conTexto = false }: { className?: string; conTexto?: boolean }) {
+  const { tema, setTema } = useTema();
+  const uid = useId();
+  return (
+    <div role="radiogroup" aria-label="Tema" className={cn('inline-flex items-center gap-0.5 p-0.5 rounded-full bg-surface-raised border border-border', className)}>
+      {TEMAS.map((t) => {
+        const on = tema === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={t.label}
+            title={t.label}
+            onClick={() => setTema(t.id)}
+            className={cn('relative inline-flex items-center justify-center gap-1.5 h-7 rounded-full text-[12px] font-medium transition-colors', conTexto ? 'px-3 flex-1' : 'w-7', on ? 'text-text-primary' : 'text-text-muted hover:text-text-primary')}
+          >
+            {on && <motion.span layoutId={'tema-' + uid} className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_3px_rgba(0,0,0,.12)]" transition={motionTransitions.springSnappy} />}
+            <t.icon className="relative size-3.5" strokeWidth={1.9} />
+            {conTexto && <span className="relative">{t.id === 'sistema' ? 'Auto' : t.label}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export const Logo = ({ className }: { className?: string }) => (
   <span className={cn('block [&>svg]:w-full [&>svg]:h-auto', className)} dangerouslySetInnerHTML={{ __html: logoSvg }} />
@@ -12,12 +48,13 @@ export const Logo = ({ className }: { className?: string }) => (
 
 export const Avatar = ({ id, size = 28, ring = false }: { id: string; size?: number; ring?: boolean }) => {
   const p = EQUIPO.find((e) => e.id === id);
-  const bg = p?.tono ?? '#EFEEE8';
+  // el negro de marca (#1A1A1A) se invierte en modo oscuro para que no desaparezca
+  const tinta = !p?.tono || p.tono.toUpperCase() === '#1A1A1A';
   return (
     <span
       title={p ? `${p.nombre} · ${p.rol}` : id}
-      className={cn('inline-grid place-items-center rounded-full text-[10px] font-medium text-white shrink-0 tnum', ring && 'ring-2 ring-[var(--surface)]')}
-      style={{ width: size, height: size, background: bg, fontSize: size < 26 ? 9 : 10 }}
+      className={cn('inline-grid place-items-center rounded-full text-[10px] font-medium shrink-0 tnum', tinta ? 'bg-ink text-on-ink' : 'text-white', ring && 'ring-2 ring-[var(--surface)]')}
+      style={{ width: size, height: size, background: tinta ? undefined : p!.tono, fontSize: size < 26 ? 9 : 10 }}
     >
       {p?.iniciales ?? '?'}
     </span>
@@ -37,9 +74,9 @@ export const AvatarStack = ({ ids, size = 26 }: { ids: string[]; size?: number }
 
 const ESTADO: Record<EstadoEntrega, { label: string; cls: string; dot: string }> = {
   interno: { label: 'En el estudio', cls: 'bg-surface-raised text-text-secondary', dot: 'bg-text-subtle' },
-  enviado: { label: 'Esperando aprobación', cls: 'bg-[#FBEAE5] text-[#9E321C]', dot: 'bg-rojo' },
-  aprobado: { label: 'Aprobado', cls: 'bg-[#E7F2EA] text-[#2F6B41]', dot: 'bg-[#3F8C55]' },
-  cambios: { label: 'Cambios pedidos', cls: 'bg-[#FBF1DC] text-[#8A5A12]', dot: 'bg-[#D9961F]' },
+  enviado: { label: 'Esperando aprobación', cls: 'bg-err-bg text-err-fg', dot: 'bg-rojo' },
+  aprobado: { label: 'Aprobado', cls: 'bg-ok-bg text-ok-fg', dot: 'bg-ok' },
+  cambios: { label: 'Cambios pedidos', cls: 'bg-warn-bg text-warn-fg', dot: 'bg-warn' },
 };
 export const EstadoBadge = ({ estado, cliente = false }: { estado: EstadoEntrega; cliente?: boolean }) => {
   const e = ESTADO[estado];
@@ -74,13 +111,13 @@ export function PillNav<T extends string>({ items, value, onChange, className, s
             className={cn(
               'relative inline-flex items-center rounded-full font-medium whitespace-nowrap transition-colors',
               size === 'sm' ? 'h-7 px-3 text-[12px]' : 'h-8 px-3.5 text-[13px]',
-              on ? 'text-text-primary' : 'text-[#9B9A93] hover:text-text-primary'
+              on ? 'text-text-primary' : 'text-text-subtle hover:text-text-primary'
             )}
           >
             {on && (
               <motion.span
                 layoutId={`pill-${uid}`}
-                className="absolute inset-0 rounded-full bg-white shadow-[0_2px_8px_rgba(26,26,26,.12)]"
+                className="absolute inset-0 rounded-full bg-surface dark:bg-surface-raised shadow-[0_2px_8px_rgba(26,26,26,.12)]"
                 transition={motionTransitions.springMorph}
               />
             )}
@@ -108,9 +145,9 @@ export const Btn = ({ variant = 'primary', size = 'md', className, children, ...
     className={cn(
       'inline-flex items-center justify-center gap-2 rounded-full font-medium whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
       size === 'sm' ? 'h-8 px-3.5 text-[12px]' : 'h-10 px-5 text-[13px]',
-      variant === 'primary' && 'bg-ink text-[#FAFAF6] hover:bg-[#333]',
-      variant === 'red' && 'bg-rojo text-white hover:bg-[#B23A21]',
-      variant === 'secondary' && 'bg-surface-raised text-text-primary hover:bg-[#E5E4DD]',
+      variant === 'primary' && 'bg-ink text-on-ink hover:bg-ink-hover',
+      variant === 'red' && 'bg-rojo text-white hover:bg-rojo-hover',
+      variant === 'secondary' && 'bg-surface-raised text-text-primary hover:bg-border',
       variant === 'ghost' && 'text-text-secondary hover:text-text-primary hover:bg-surface-raised',
       className
     )}
@@ -128,11 +165,9 @@ export const Card = ({ className, children }: { className?: string; children: Re
 export const EtapaBar = ({ etapa, total = 6 }: { etapa: number; total?: number }) => (
   <div className="grid gap-[3px] w-full" style={{ gridTemplateColumns: `repeat(${total}, minmax(0,1fr))` }}>
     {Array.from({ length: total }).map((_, i) => (
-      <motion.span
+      <span
         key={i}
-        initial={false}
-        animate={{ backgroundColor: i < etapa ? '#1A1A1A' : i === etapa ? '#C74227' : '#E4E3DC' }}
-        className="h-1.5 rounded-full"
+        className={cn('h-1.5 rounded-full transition-colors duration-500', i < etapa ? 'bg-ink' : i === etapa ? 'bg-rojo' : 'bg-border')}
       />
     ))}
   </div>
@@ -243,11 +278,11 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.97 }}
               transition={motionTransitions.springResponsive}
-              className="pointer-events-auto inline-flex items-center gap-2.5 h-10 pl-2 pr-3 rounded-full bg-ink text-[#FAFAF6] text-[13px] shadow-[var(--shadow-elevated)] max-w-[calc(100vw-32px)]"
+              className="pointer-events-auto inline-flex items-center gap-2.5 h-10 pl-2 pr-3 rounded-full bg-ink text-on-ink text-[13px] shadow-[var(--shadow-elevated)] max-w-[calc(100vw-32px)]"
             >
               <span className="grid place-items-center size-6 rounded-full bg-rojo"><Check className="size-3.5" strokeWidth={2.5} /></span>
               <span className="truncate">{t.text}</span>
-              <button aria-label="Cerrar" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))} className="text-[#8C8B84] hover:text-white"><X className="size-3.5" /></button>
+              <button aria-label="Cerrar" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))} className="opacity-60 hover:opacity-100"><X className="size-3.5" /></button>
             </motion.div>
           ))}
         </AnimatePresence>

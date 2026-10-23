@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Download, MessageSquare, LogOut, CalendarDays, Check as CheckIcon } from 'lucide-react';
+import { ArrowLeft, Download, MessageSquare, LogOut, CalendarDays, Check as CheckIcon, UserRound } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Stepper } from './easyui/stepper';
@@ -8,6 +8,7 @@ import { DragToConfirm } from './easyui/DragToConfirm';
 import { UnfoldAccordion } from './easyui/UnfoldAccordion';
 import { Logo, Avatar, EstadoBadge, PillNav, Btn, Card, Preview, Fade, useToast } from './ui';
 import { useStore } from './store';
+import { CuentaSheet } from './Paneles';
 import { ETAPAS, ETAPA_DESC, persona, usd, type Proyecto, type Entrega } from './data';
 
 type Tab = 'proyecto' | 'entregables' | 'pagos';
@@ -16,13 +17,14 @@ export default function ClientPortal({ proyectoId, preview = false, onSalirPrevi
   const { proyectos, salir } = useStore();
   const p = proyectos.find((x) => x.id === proyectoId)!;
   const [tab, setTab] = useState<Tab>('proyecto');
+  const [cuenta, setCuenta] = useState(false);
   const visibles = p.entregas.filter((e) => e.estado !== 'interno');
   const porRevisar = visibles.filter((e) => e.estado === 'enviado');
 
   return (
     <div className="min-h-full">
       {preview && (
-        <div className="bg-ink text-[#FAFAF6] gutter py-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px]">
+        <div className="bg-ink text-on-ink gutter py-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px]">
           <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-rojo" />Vista previa: así ve {p.cliente} su portal</span>
           <button onClick={onSalirPreview} className="inline-flex items-center gap-1 underline underline-offset-2"><ArrowLeft className="size-3" />Volver al estudio</button>
         </div>
@@ -38,9 +40,16 @@ export default function ClientPortal({ proyectoId, preview = false, onSalirPrevi
           <div className="order-3 w-full sm:order-none sm:w-auto flex justify-center">
             <PillNav items={[{ id: 'proyecto', label: 'Proyecto' }, { id: 'entregables', label: 'Entregables', count: visibles.length }]} value={tab} onChange={(v) => setTab(v as Tab)} />
           </div>
-          <button onClick={() => (preview ? onSalirPreview?.() : salir())} className="glass inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[12px] font-medium text-text-secondary hover:text-text-primary">
-            <LogOut className="size-3.5" /> {preview ? 'Cerrar vista' : 'Salir'}
-          </button>
+          <div className="flex items-center gap-2">
+            {!preview && (
+              <button onClick={() => setCuenta(true)} aria-label="Mi cuenta" title="Mi cuenta: contraseña y apariencia" className="glass grid place-items-center size-9 rounded-full text-text-secondary hover:text-text-primary">
+                <UserRound className="size-4" />
+              </button>
+            )}
+            <button onClick={() => (preview ? onSalirPreview?.() : salir())} className="glass inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[12px] font-medium text-text-secondary hover:text-text-primary">
+              <LogOut className="size-3.5" /> {preview ? 'Cerrar vista' : 'Salir'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -53,6 +62,7 @@ export default function ClientPortal({ proyectoId, preview = false, onSalirPrevi
           </Fade>
         </div>
       </main>
+      {!preview && <CuentaSheet open={cuenta} onClose={() => setCuenta(false)} />}
     </div>
   );
 }
@@ -271,9 +281,9 @@ function Pagos({ p }: { p: Proyecto }) {
             <div className="flex items-center justify-between h-6">
               <span className="tnum text-[12px] text-text-muted">Cuota {i + 1} · {x.pct}%</span>
               {x.estado === 'pagado' ? (
-                <span className="grid place-items-center size-6 rounded-full bg-ink text-white"><CheckIcon className="size-3.5" strokeWidth={2.5} /></span>
+                <span className="grid place-items-center size-6 rounded-full bg-ink text-on-ink"><CheckIcon className="size-3.5" strokeWidth={2.5} /></span>
               ) : x.estado === 'pendiente' ? (
-                <span className="text-[11px] font-medium text-[#9E321C] bg-[#FBEAE5] h-6 px-2.5 rounded-full inline-flex items-center">Próxima</span>
+                <span className="text-[11px] font-medium text-err-fg bg-err-bg h-6 px-2.5 rounded-full inline-flex items-center">Próxima</span>
               ) : (
                 <span className="text-[11px] text-text-subtle">Más adelante</span>
               )}

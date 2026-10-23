@@ -244,7 +244,7 @@ export const DragToConfirm: React.FC<DragToConfirmProps> = ({
         };
       default:
         return {
-          fill: 'bg-neutral-200/70 dark:bg-white/[0.07] border-r border-neutral-300/50 dark:border-white/10',
+          fill: 'bg-neutral-200/70 dark:bg-surface/[0.07] border-r border-neutral-300/50 dark:border-white/10',
           confirmedTrack: 'bg-emerald-500/[0.08] border-emerald-500/35 dark:bg-emerald-500/15 dark:border-emerald-500/30',
           confirmedHandle: 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-neutral-950 border-emerald-600 dark:border-emerald-500 shadow-xs',
           confirmedText: 'text-emerald-600 dark:text-emerald-400 font-semibold',
@@ -342,7 +342,7 @@ export const DragToConfirm: React.FC<DragToConfirmProps> = ({
             'rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 relative select-none touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500 transition-[background-color,border-color,box-shadow]',
             isConfirmed
               ? tone.confirmedHandle
-              : 'bg-white dark:bg-[#1C1C20] border border-neutral-200/90 dark:border-[#2C2C32] text-neutral-800 dark:text-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:border-neutral-300 dark:hover:border-[#3A3A42]',
+              : 'bg-surface dark:bg-[#1C1C20] border border-neutral-200/90 dark:border-[#2C2C32] text-neutral-800 dark:text-neutral-200 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:border-neutral-300 dark:hover:border-[#3A3A42]',
             disabled && 'cursor-not-allowed opacity-50'
           )}
           tabIndex={disabled ? -1 : 0}

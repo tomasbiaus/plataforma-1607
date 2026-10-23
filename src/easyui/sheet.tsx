@@ -215,7 +215,7 @@ export function SheetContent({
       onPointerDown={(e) => controls.start(e)}
       className="flex h-7 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
     >
-      <span className="h-1 w-9 rounded-full bg-neutral-200 dark:bg-neutral-800" />
+      <span className="h-1 w-9 rounded-full bg-border" />
     </div>
   );
 
@@ -225,7 +225,7 @@ export function SheetContent({
         <div key="sheet" className="fixed inset-0 z-50">
           <motion.div
             aria-hidden
-            className="absolute inset-0 bg-[#1A1A1A]/25 backdrop-blur-[2px] dark:bg-black/60"
+            className="absolute inset-0 bg-overlay backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -240,7 +240,7 @@ export function SheetContent({
             aria-describedby={hasDesc ? descId : undefined}
             tabIndex={-1}
             className={cn(
-              "absolute flex flex-col overflow-hidden border-neutral-200 bg-white text-neutral-900 shadow-2xl outline-none dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100",
+              "absolute flex flex-col overflow-hidden border-border bg-surface text-text-primary shadow-2xl outline-none",
               cfg.pos,
               className
             )}
@@ -272,7 +272,7 @@ export function SheetContent({
                 type="button"
                 aria-label="Cerrar"
                 onClick={() => setOpen(false)}
-                className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-neutral-400 outline-none transition hover:bg-neutral-100 hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 active:scale-95 dark:hover:bg-neutral-800 dark:hover:text-white dark:focus-visible:ring-neutral-600/60"
+                className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg text-text-muted outline-none transition hover:bg-surface-raised hover:text-text-primary focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] active:scale-95"
               >
                 <X className="size-4" />
               </button>
@@ -303,7 +303,7 @@ export function SheetDescription({ className, ...props }: React.ComponentProps<"
     return () => setHasDesc(false);
   }, [setHasDesc]);
   return (
-    <p className={cn("text-sm text-neutral-500 dark:text-neutral-400", className)} {...props} id={descId} />
+    <p className={cn("text-sm text-text-muted", className)} {...props} id={descId} />
   );
 }
 
@@ -315,7 +315,7 @@ export function SheetFooter({ className, ...props }: React.ComponentProps<"div">
   return (
     <div
       className={cn(
-        "flex items-center justify-end gap-2 border-t border-neutral-200 px-5 py-4 dark:border-neutral-800",
+        "flex items-center justify-end gap-2 border-t border-border px-5 py-4",
         className
       )}
       {...props}

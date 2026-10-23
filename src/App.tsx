@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { StoreProvider, useStore } from './store';
 import { ToastProvider, useToast } from './ui';
 import { useEffect, useRef } from 'react';
-import Login from './Login';
+import Login, { NuevaClave } from './Login';
 import Studio from './Studio';
 import ClientPortal from './ClientPortal';
 
@@ -27,7 +27,8 @@ function Cargando() {
 }
 
 function Router() {
-  const { sesion, listo, error, salir } = useStore();
+  const { sesion, listo, error, salir, recuperando } = useStore();
+  if (recuperando) return <NuevaClave />;
   if (!listo) return <Cargando />;
   if (error && !sesion) {
     return (

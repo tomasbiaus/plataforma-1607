@@ -29,6 +29,11 @@ type Store = {
   email: string | null;
   entrar: (email: string, clave: string) => Promise<string | null>;
   salir: () => Promise<void>;
+  /** true cuando la persona entró desde el mail de "olvidé mi contraseña" */
+  recuperando: boolean;
+  cambiarClave: (nueva: string, actual?: string) => Promise<string | null>;
+  pedirRecuperacion: (email: string) => Promise<string | null>;
+  terminarRecuperacion: () => void;
   setSesion: (s: Sesion) => void;
   recargar: () => Promise<void>;
   setEstadoEntrega: (pid: string, eid: string, estado: EstadoEntrega, feedback?: { autor: string; texto: string }) => Promise<void>;
@@ -62,6 +67,15 @@ type Store = {
 };
 
 const Ctx = createContext<Store>(null as any);
+
+// El link de recuperación llega con #...type=recovery; lo miramos antes de que Supabase limpie la URL
+const VIENE_DE_RECUPERACION = typeof window !== 'undefined' && /type=recovery/.test(window.location.hash);
+
+const errorClave = (m: string) =>
+  /different from the old/i.test(m) ? 'La nueva contraseña tiene que ser distinta a la actual.'
+  : /at least|characters|weak/i.test(m) ? 'Elegí una contraseña más segura: al menos 8 caracteres, mezclando letras y números.'
+  : /rate limit|seconds/i.test(m) ? 'Esperá un minuto antes de volver a intentar.'
+  : m;
 export const useStore = () => useContext(Ctx);
 
 /** Tareas que puede ver quien está logueado (la base ya filtra las privadas) */
@@ -76,6 +90,7 @@ const quienDe = (tipo: string, quien: string | null) => (tipo === 'auto' ? 'auto
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [listo, setListo] = useState(false);
+  const [recuperando, setRecuperando] = useState(VIENE_DE_RECUPERACION);
   const [error, setError] = useState<string | null>(null);
   const [sesion, setSesion] = useState<Sesion>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -208,6 +223,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     recargar();
     const { data: sub } = supabase.auth.onAuthStateChange((ev) => {
+      if (ev === 'PASSWORD_RECOVERY') setRecuperando(true);
       if (ev === 'SIGNED_OUT') { setSesion(null); setProyectos([]); setTareas([]); setNumeros(null); }
     });
     // refresco suave cada 60 s para ver lo que cambian los demás
@@ -238,6 +254,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setListo(false);
       await recargar();
       return null;
+    },
+    recuperando,
+    cambiarClave: async (nueva, actual) => {
+      if (nueva.length < 8) return 'La contraseña tiene que tener al menos 8 caracteres.';
+      if (actual !== undefined) {
+        const { data } = await supabase.auth.getUser();
+        const mail = data.user?.email;
+        if (!mail) return 'Tu sesión se cerró. Volvé a ingresar.';
+        const { error } = await supabase.auth.signInWithPassword({ email: mail, password: actual });
+        if (error) return 'La contraseña actual no es correcta.';
+      }
+      const { error } = await supabase.auth.updateUser({ password: nueva });
+      return error ? errorClave(error.message) : null;
+    },
+    pedirRecuperacion: async (mail) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(mail.trim().toLowerCase(), { redirectTo: window.location.origin });
+      return error ? errorClave(error.message) : null;
+    },
+    terminarRecuperacion: () => {
+      setRecuperando(false);
+      if (window.location.hash) history.replaceState(null, '', window.location.pathname);
     },
     salir: async () => {
       await supabase.rpc('numeros_cerrar').then(() => {}, () => {});

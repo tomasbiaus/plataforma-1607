@@ -66,7 +66,7 @@ function CambiarClave({ onListo }: { onListo: () => void }) {
     <div className="min-h-[60vh] grid place-items-center">
       <form onSubmit={guardar} className="w-full max-w-[380px] rounded-2xl border border-border bg-surface p-6 sm:p-8 space-y-3">
         <h1 className="text-[22px] font-bold tracking-[-0.03em] text-center mb-3">Cambiar contraseña de Números</h1>
-        {error && <div className="p-3 rounded-lg bg-[#FBEAE5] text-[#9E321C] text-[12px]">{error}</div>}
+        {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px]">{error}</div>}
         <LockInput id="num-actual" aria-label="Contraseña actual" type="password" placeholder="Contraseña actual" value={actual} onChange={(e) => { setActual(e.target.value); setError(null); }} leftIcon={<Lock className="size-4" />} />
         <LockInput id="num-nueva" aria-label="Contraseña nueva" type="password" placeholder="Contraseña nueva" value={nueva} onChange={(e) => { setNueva(e.target.value); setError(null); }} leftIcon={<KeyRound className="size-4" />} />
         <div className="flex gap-2 pt-1"><Btn type="button" variant="ghost" className="flex-1 !h-11 !rounded-lg" onClick={onListo}>Cancelar</Btn><Btn type="submit" className="flex-1 !h-11 !rounded-lg">Guardar</Btn></div>
@@ -108,7 +108,7 @@ function Candado() {
     <div className="min-h-[70vh] grid place-items-center">
       <motion.div animate={shake} className="w-full max-w-[380px] rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-[0_20px_50px_-24px_rgba(26,26,26,.18)]">
         <div className="flex flex-col items-center text-center mb-6">
-          <span className="grid place-items-center size-12 rounded-2xl bg-ink text-[#FAFAF6] mb-4">
+          <span className="grid place-items-center size-12 rounded-2xl bg-ink text-on-ink mb-4">
             {crear ? <KeyRound className="size-5" /> : <Lock className="size-5" />}
           </span>
           <h1 className="text-[22px] font-bold tracking-[-0.03em]">{crear ? 'Protegé tus números' : 'Números del estudio'}</h1>
@@ -120,7 +120,7 @@ function Candado() {
         <AnimatePresence>
           {error && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="mb-4 p-3 rounded-lg bg-[#FBEAE5] text-[#9E321C] text-[12px] flex gap-2"><AlertCircle className="size-4 shrink-0" />{error}</div>
+              <div className="mb-4 p-3 rounded-lg bg-err-bg text-err-fg text-[12px] flex gap-2"><AlertCircle className="size-4 shrink-0" />{error}</div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -234,7 +234,7 @@ function Panel({ onBloquear, onCambiar, abrir }: { onBloquear: () => void; onCam
                 const hE = (v.esperado / max) * 100;
                 return (
                   <button key={k} onClick={() => setMesSel(k)} className="h-full flex flex-col justify-end items-stretch group" aria-label={`${MES_LARGO[k]}: ${usd(v.cobrado)} cobrados, ${usd(v.esperado)} esperados`}>
-                    <motion.span initial={{ height: 0 }} animate={{ height: `${hE}%` }} transition={motionTransitions.springGentle} className="rounded-t-md border-2 border-dashed border-rojo/60 border-b-0" style={{ borderColor: hE ? '#C7422799' : 'transparent' }} />
+                    <motion.span initial={{ height: 0 }} animate={{ height: `${hE}%` }} transition={motionTransitions.springGentle} className={cn('rounded-t-md border-2 border-dashed border-b-0', hE ? 'border-rojo/60' : 'border-transparent')} />
                     <motion.span initial={{ height: 0 }} animate={{ height: `${hC}%` }} transition={motionTransitions.springGentle} className={cn('bg-ink', hE ? '' : 'rounded-t-md', mesSel === k ? 'opacity-100' : 'opacity-80 group-hover:opacity-100')} />
                   </button>
                 );
@@ -252,7 +252,7 @@ function Panel({ onBloquear, onCambiar, abrir }: { onBloquear: () => void; onCam
             </div>
             <p className="text-[11px] text-text-muted mt-3 flex flex-wrap gap-x-4 gap-y-1">
               <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-ink" />Cobrado</span>
-              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm border-2 border-dashed" style={{ borderColor: '#C74227' }} />Esperado según el próximo hito</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm border-2 border-dashed border-rojo" />Esperado según el próximo hito</span>
             </p>
           </Card>
         </section>
@@ -307,7 +307,7 @@ function Panel({ onBloquear, onCambiar, abrir }: { onBloquear: () => void; onCam
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-1.5 rounded-full bg-surface-raised overflow-hidden flex">
-                          {p.pagos.map((x) => <motion.span key={x.id} initial={false} animate={{ backgroundColor: x.estado === 'pagado' ? '#1A1A1A' : x.estado === 'pendiente' ? '#C74227' : '#EFEEE8' }} style={{ width: x.pct + '%' }} className="h-full border-r-2 border-white last:border-0" />)}
+                          {p.pagos.map((x) => <span key={x.id} style={{ width: x.pct + '%' }} className={cn('h-full border-r-2 border-surface last:border-0 transition-colors duration-500', x.estado === 'pagado' ? 'bg-ink' : x.estado === 'pendiente' ? 'bg-rojo' : 'bg-surface-raised')} />)}
                         </div>
                         <span className="tnum text-[12px] text-text-secondary w-[72px] text-right">{usd(c)}</span>
                       </div>
@@ -320,7 +320,7 @@ function Panel({ onBloquear, onCambiar, abrir }: { onBloquear: () => void; onCam
                   <td className="px-4 py-3 font-medium">{CLIENTES[c.cliente]?.nombre ?? c.cliente}</td>
                   <td className="px-4 py-3 text-text-secondary">Sin proyecto en el portal</td>
                   <td className="px-4 py-3 text-right tnum text-text-subtle">—</td>
-                  <td className="px-4 py-3 text-[12px]">{c.estado === 'pagado' ? <span className="text-[#2F6B41]">Saldo cobrado</span> : <span className="text-rojo">Falta {usd(c.monto)}</span>}</td>
+                  <td className="px-4 py-3 text-[12px]">{c.estado === 'pagado' ? <span className="text-ok-fg">Saldo cobrado</span> : <span className="text-rojo">Falta {usd(c.monto)}</span>}</td>
                 </tr>
               ))}
             </tbody>

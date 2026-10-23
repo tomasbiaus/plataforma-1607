@@ -60,9 +60,9 @@ const Stepper = ({ label, value, onChange, max = 9 }: { label: string; value: nu
   <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised px-2 h-10">
     <span className="text-[12px] text-text-muted pl-1">{label}</span>
     <span className="flex items-center gap-1">
-      <button aria-label={`Menos ${label}`} onClick={() => onChange(Math.max(0, value - 1))} className="grid place-items-center size-7 rounded-md hover:bg-white"><Minus className="size-3.5" /></button>
+      <button aria-label={`Menos ${label}`} onClick={() => onChange(Math.max(0, value - 1))} className="grid place-items-center size-7 rounded-md hover:bg-surface"><Minus className="size-3.5" /></button>
       <motion.span key={value} initial={{ y: -4, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-5 text-center text-[14px] font-bold tnum">{value}</motion.span>
-      <button aria-label={`Más ${label}`} onClick={() => onChange(Math.min(max, value + 1))} className="grid place-items-center size-7 rounded-md hover:bg-white"><Plus className="size-3.5" /></button>
+      <button aria-label={`Más ${label}`} onClick={() => onChange(Math.min(max, value + 1))} className="grid place-items-center size-7 rounded-md hover:bg-surface"><Plus className="size-3.5" /></button>
     </span>
   </div>
 );
@@ -144,7 +144,7 @@ export default function PlanAnual() {
                 <p className="text-[clamp(30px,4vw,44px)] font-bold tracking-[-0.035em] tnum leading-none mt-2">{usd(calc.total)}</p>
                 <p className="text-[13px] text-text-muted mt-1.5">de {usd(plan.objetivo)} · {usd(Math.round(plan.objetivo / 12))} por mes</p>
               </div>
-              <span className={cn('inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium', calc.falta ? 'bg-[#FBEAE5] text-[#9E321C]' : 'bg-[#E7F2EA] text-[#2F6B41]')}>
+              <span className={cn('inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium', calc.falta ? 'bg-err-bg text-err-fg' : 'bg-ok-bg text-ok-fg')}>
                 {calc.falta ? `Faltan ${usd(calc.falta)}` : `Objetivo cubierto · ${Math.round((calc.total / plan.objetivo) * 100)}%`}
               </span>
             </div>
@@ -215,7 +215,7 @@ export default function PlanAnual() {
             return (
               <Card key={h.q} className="p-4">
                 <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2"><span className="grid place-items-center size-7 rounded-lg bg-ink text-[#FAFAF6]"><h.icon className="size-3.5" /></span><span className="text-[14px] font-bold">{h.q} · {h.titulo}</span></span>
+                  <span className="flex items-center gap-2"><span className="grid place-items-center size-7 rounded-lg bg-ink text-on-ink"><h.icon className="size-3.5" /></span><span className="text-[14px] font-bold">{h.q} · {h.titulo}</span></span>
                   <span className="text-[11px] text-text-muted tnum">{hechos}/{h.items.length}</span>
                 </div>
                 <ul className="mt-3 space-y-1">
@@ -224,7 +224,7 @@ export default function PlanAnual() {
                     return (
                       <li key={it.id}>
                         <button onClick={() => set({ hechos: { ...plan.hechos, [it.id]: !on } })} className="w-full flex items-start gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-surface-hover">
-                          <span className={cn('mt-0.5 size-4 rounded-[5px] border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink' : 'border-border-hover bg-white')}>{on && <CheckIcon className="size-3 text-white" strokeWidth={3} />}</span>
+                          <span className={cn('mt-0.5 size-4 rounded-[5px] border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink' : 'border-border-hover bg-surface')}>{on && <CheckIcon className="size-3 text-white" strokeWidth={3} />}</span>
                           <span className={cn('text-[12px] leading-snug', on && 'line-through text-text-subtle')}>{it.t}</span>
                         </button>
                       </li>

@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2 } from 'lucide-react';
+import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
-import { Avatar, Btn } from './ui';
+import { Avatar, Btn, TemaSwitch, useToast } from './ui';
 import { useStore, type NuevoProyecto } from './store';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
@@ -59,7 +59,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                 <Prop label="Estado"><EstadoPill t={t} /></Prop>
                 <Prop label="Prioridad">
                   {(['alta', 'media', 'baja'] as Prioridad[]).map((pr) => (
-                    <button key={pr} onClick={() => actualizarTarea(t.id, { prioridad: t.prioridad === pr ? null : pr }, `cambió la prioridad a ${pr}`)} className={cn('h-6 px-2 rounded-md text-[11px] font-medium capitalize transition-colors', t.prioridad === pr ? (pr === 'alta' ? 'bg-[#FBEAE5] text-[#9E321C]' : pr === 'media' ? 'bg-[#FBF1DC] text-[#8A5A12]' : 'bg-[#E7F2EA] text-[#2F6B41]') : 'text-text-muted hover:bg-surface-raised')}>{pr}</button>
+                    <button key={pr} onClick={() => actualizarTarea(t.id, { prioridad: t.prioridad === pr ? null : pr }, `cambió la prioridad a ${pr}`)} className={cn('h-6 px-2 rounded-md text-[11px] font-medium capitalize transition-colors', t.prioridad === pr ? (pr === 'alta' ? 'bg-err-bg text-err-fg' : pr === 'media' ? 'bg-warn-bg text-warn-fg' : 'bg-ok-bg text-ok-fg') : 'text-text-muted hover:bg-surface-raised')}>{pr}</button>
                   ))}
                 </Prop>
                 <Prop label="Responsables">
@@ -80,7 +80,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                 <Prop label="Equipo">
                   {(['Brand Strategist', 'Design'] as const).map((eq) => {
                     const on = t.equipo?.includes(eq);
-                    return <button key={eq} onClick={() => actualizarTarea(t.id, { equipo: on ? t.equipo!.filter((x) => x !== eq) : [...(t.equipo ?? []), eq] })} className={cn('h-6 px-2 rounded-md text-[11px] font-medium transition-colors', on ? (eq === 'Design' ? 'bg-[#FBEDE4] text-[#9A4A1A]' : 'bg-[#E6EEF8] text-[#2D5B91]') : 'text-text-muted hover:bg-surface-raised')}>{eq}</button>;
+                    return <button key={eq} onClick={() => actualizarTarea(t.id, { equipo: on ? t.equipo!.filter((x) => x !== eq) : [...(t.equipo ?? []), eq] })} className={cn('h-6 px-2 rounded-md text-[11px] font-medium transition-colors', on ? (eq === 'Design' ? 'bg-[#FBEDE4] text-[#9A4A1A]' : 'bg-info-bg text-info-fg') : 'text-text-muted hover:bg-surface-raised')}>{eq}</button>;
                   })}
                 </Prop>
                 {p && (
@@ -155,7 +155,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                 <ol className="space-y-2.5">
                   {[...(t.historial ?? [])].reverse().map((h, i) => (
                     <li key={i} className="flex gap-2.5 text-[12px]">
-                      {h.quien === 'auto' ? <span className="grid place-items-center size-5 rounded-full bg-rojo text-white shrink-0"><Zap className="size-3" /></span> : h.quien === 'cliente' ? <span className="size-5 rounded-full bg-[#FBEAE5] shrink-0" /> : <Avatar id={h.quien} size={20} />}
+                      {h.quien === 'auto' ? <span className="grid place-items-center size-5 rounded-full bg-rojo text-white shrink-0"><Zap className="size-3" /></span> : h.quien === 'cliente' ? <span className="size-5 rounded-full bg-err-bg shrink-0" /> : <Avatar id={h.quien} size={20} />}
                       <span className="text-text-secondary"><span className="text-text-primary font-medium">{quienNombre(h.quien)}</span> {h.texto} <span className="text-text-subtle">· {h.cuando}</span></span>
                     </li>
                   ))}
@@ -227,7 +227,7 @@ export function NuevoProyectoSheet({ open, onClose, onCreado }: { open: boolean;
             <p className="text-[12px] text-text-muted mb-2">Diseño a cargo de</p>
             <div className="flex flex-wrap gap-1.5">
               {disenadores().map((m) => (
-                <button key={m.id} onClick={() => setF({ ...f, diseno: m.id })} aria-pressed={f.diseno === m.id} className={cn('inline-flex items-center gap-1.5 h-8 pl-0.5 pr-3 rounded-full text-[12px] transition-colors', f.diseno === m.id ? 'bg-ink text-[#FAFAF6]' : 'bg-surface-raised text-text-secondary')}>
+                <button key={m.id} onClick={() => setF({ ...f, diseno: m.id })} aria-pressed={f.diseno === m.id} className={cn('inline-flex items-center gap-1.5 h-8 pl-0.5 pr-3 rounded-full text-[12px] transition-colors', f.diseno === m.id ? 'bg-ink text-on-ink' : 'bg-surface-raised text-text-secondary')}>
                   <Avatar id={m.id} size={28} />{m.nombre}
                 </button>
               ))}
@@ -311,6 +311,62 @@ export function AutomatizacionesSheet({ open, onClose }: { open: boolean; onClos
             )}
           </div>
         </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* Mi cuenta: tema + cambiar contraseña. Lo usan el equipo y los clientes. */
+export function CuentaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { cambiarClave, salir, email } = useStore();
+  const toast = useToast();
+  const [f, setF] = useState({ actual: '', nueva: '', repetir: '' });
+  const [ver, setVer] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const cerrar = () => { setF({ actual: '', nueva: '', repetir: '' }); setError(null); onClose(); };
+  const guardar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!f.actual) return setError('Escribí tu contraseña actual.');
+    if (f.nueva.length < 8) return setError('La nueva contraseña tiene que tener al menos 8 caracteres.');
+    if (f.nueva !== f.repetir) return setError('Las dos contraseñas nuevas no coinciden.');
+    setGuardando(true);
+    const err = await cambiarClave(f.nueva, f.actual);
+    setGuardando(false);
+    if (err) return setError(err);
+    toast('Listo, tu contraseña nueva ya funciona.');
+    cerrar();
+  };
+  const campo = 'h-10 w-full rounded-lg bg-surface-raised border border-transparent px-3 text-[13px] outline-none focus:border-border-hover focus:ring-2 focus:ring-[var(--accent-ring)]';
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && cerrar()}>
+      <SheetContent side="right" className="max-w-[26rem]">
+        <SheetHeader className="pt-6">
+          <SheetTitle className="text-[22px] font-bold tracking-[-0.03em]">Mi cuenta</SheetTitle>
+          <SheetDescription className="text-[13px] text-text-muted">{email}</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="space-y-8 pb-8">
+          <section className="space-y-3">
+            <h3 className="eyebrow">Apariencia</h3>
+            <TemaSwitch conTexto className="w-full" />
+            <p className="text-[12px] text-text-muted">Automático sigue el modo de tu compu o celular.</p>
+          </section>
+          <form onSubmit={guardar} className="space-y-3" noValidate>
+            <h3 className="eyebrow flex items-center gap-1.5"><KeyRound className="size-3.5" />Cambiar contraseña</h3>
+            <label className="block space-y-1.5"><span className="text-[12px] text-text-muted">Contraseña actual</span>
+              <input id="cuenta-actual" type={ver ? 'text' : 'password'} autoComplete="current-password" value={f.actual} onChange={(e) => { setF({ ...f, actual: e.target.value }); setError(null); }} className={campo} /></label>
+            <label className="block space-y-1.5"><span className="text-[12px] text-text-muted">Nueva contraseña</span>
+              <input id="cuenta-nueva" type={ver ? 'text' : 'password'} autoComplete="new-password" value={f.nueva} onChange={(e) => { setF({ ...f, nueva: e.target.value }); setError(null); }} placeholder="Mínimo 8 caracteres" className={campo} /></label>
+            <label className="block space-y-1.5"><span className="text-[12px] text-text-muted">Repetila</span>
+              <input id="cuenta-repetir" type={ver ? 'text' : 'password'} autoComplete="new-password" value={f.repetir} onChange={(e) => { setF({ ...f, repetir: e.target.value }); setError(null); }} className={campo} /></label>
+            <label className="flex items-center gap-2 text-[12px] text-text-muted cursor-pointer select-none"><input type="checkbox" checked={ver} onChange={(e) => setVer(e.target.checked)} className="accent-[var(--rojo)]" />Mostrar contraseñas</label>
+            {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px]">{error}</div>}
+            <Btn type="submit" className="w-full" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar contraseña'}</Btn>
+          </form>
+        </SheetBody>
+        <SheetFooter className="justify-start">
+          <Btn variant="ghost" size="sm" onClick={() => salir()}><LogOut className="size-3.5" />Cerrar sesión</Btn>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );

@@ -44,16 +44,16 @@ export function Stepper({ steps, current, onStepChange, orientation = "horizonta
             className={cn(
               "relative grid size-7 shrink-0 place-items-center rounded-full border text-xs font-medium tabular-nums transition-colors duration-300",
               state === "complete" &&
-                "border-[#1A1A1A] bg-[#1A1A1A] text-white dark:border-white dark:bg-white dark:text-[#1A1A1A]",
-              state === "current" && "border-[#1A1A1A] text-[#1A1A1A] dark:border-white dark:text-white",
-              state === "upcoming" && "border-[#E4E3DC] text-[#8C8B84] dark:border-neutral-800 dark:text-neutral-500"
+                "border-ink bg-ink text-on-ink",
+              state === "current" && "border-ink text-text-primary",
+              state === "upcoming" && "border-border text-text-muted"
             )}
           >
             {state === "current" && (
               <motion.span
                 layoutId={`${uid}-ring`}
                 transition={spring}
-                className="absolute -inset-[5px] rounded-full border border-[#D3D2CA] dark:border-neutral-700"
+                className="absolute -inset-[5px] rounded-full border border-border-hover"
               />
             )}
             {state === "complete" ? (
@@ -90,14 +90,14 @@ export function Stepper({ steps, current, onStepChange, orientation = "horizonta
             <span
               className={cn(
                 "truncate text-sm transition-colors duration-300",
-                state === "upcoming" ? "text-[#8C8B84] dark:text-neutral-500" : "font-medium text-[#1A1A1A] dark:text-neutral-100"
+                state === "upcoming" ? "text-text-muted" : "font-medium text-text-primary"
               )}
             >
               {step.title}
               {state === "complete" && <span className="sr-only"> (completed)</span>}
             </span>
             {step.description && (
-              <span className="truncate text-xs text-[#8C8B84] dark:text-neutral-500">{step.description}</span>
+              <span className="truncate text-xs text-text-muted">{step.description}</span>
             )}
           </span>
         );
@@ -107,7 +107,7 @@ export function Stepper({ steps, current, onStepChange, orientation = "horizonta
             type="button"
             onClick={() => onStepChange!(i)}
             className={cn(
-              "flex gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-[#8C8B84]/50 dark:focus-visible:ring-neutral-600/60",
+              "flex gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
               vertical ? "items-start" : "items-center"
             )}
           >
@@ -136,7 +136,7 @@ export function Stepper({ steps, current, onStepChange, orientation = "horizonta
               <span
                 aria-hidden
                 className={cn(
-                  "overflow-hidden bg-[#E4E3DC] dark:bg-neutral-800",
+                  "overflow-hidden bg-border",
                   vertical ? "absolute bottom-1 left-[13.5px] top-[34px] w-px" : "relative mx-3 h-px flex-1"
                 )}
               >
@@ -145,7 +145,7 @@ export function Stepper({ steps, current, onStepChange, orientation = "horizonta
                   animate={vertical ? { scaleY: i < current ? 1 : 0 } : { scaleX: i < current ? 1 : 0 }}
                   transition={fill}
                   className={cn(
-                    "absolute inset-0 bg-[#1A1A1A] dark:bg-white",
+                    "absolute inset-0 bg-ink",
                     vertical ? "origin-top" : "origin-left"
                   )}
                 />

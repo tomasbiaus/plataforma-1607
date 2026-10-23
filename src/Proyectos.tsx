@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Avatar, AvatarStack, PillNav, Btn, Card, Fade, useToast } from './ui';
@@ -13,12 +13,12 @@ import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, dias, addDias, type Tarea, type E
 
 const ESTADOS: Record<EstadoTarea, { label: string; cls: string; dot: string }> = {
   pendiente: { label: 'Sin empezar', cls: 'bg-surface-raised text-text-secondary', dot: 'bg-text-subtle' },
-  curso: { label: 'En curso', cls: 'bg-[#E6EEF8] text-[#2D5B91]', dot: 'bg-[#4E86C6]' },
-  hecha: { label: 'Hecho', cls: 'bg-[#E7F2EA] text-[#2F6B41]', dot: 'bg-[#3F8C55]' },
+  curso: { label: 'En curso', cls: 'bg-info-bg text-info-fg', dot: 'bg-info' },
+  hecha: { label: 'Hecho', cls: 'bg-ok-bg text-ok-fg', dot: 'bg-ok' },
 };
 const SIGUIENTE: Record<EstadoTarea, EstadoTarea> = { pendiente: 'curso', curso: 'hecha', hecha: 'pendiente' };
 
-const DOT: Record<EstadoTarea, string> = { pendiente: '#A9A79E', curso: '#4E86C6', hecha: '#3F8C55' };
+const DOT: Record<EstadoTarea, string> = { pendiente: 'var(--text-subtle)', curso: 'var(--info)', hecha: 'var(--ok)' };
 /* Selector de estado con el GooeyMenu de EasyUI */
 export function EstadoPill({ t }: { t: Tarea }) {
   const { setEstadoTarea } = useStore();
@@ -33,9 +33,9 @@ export function EstadoPill({ t }: { t: Tarea }) {
 }
 
 const PRIO: Record<string, { label: string; cls: string }> = {
-  alta: { label: 'Alta', cls: 'bg-[#FBEAE5] text-[#9E321C]' },
-  media: { label: 'Media', cls: 'bg-[#FBF1DC] text-[#8A5A12]' },
-  baja: { label: 'Baja', cls: 'bg-[#E7F2EA] text-[#2F6B41]' },
+  alta: { label: 'Alta', cls: 'bg-err-bg text-err-fg' },
+  media: { label: 'Media', cls: 'bg-warn-bg text-warn-fg' },
+  baja: { label: 'Baja', cls: 'bg-ok-bg text-ok-fg' },
 };
 export const PrioridadTag = ({ p }: { p: Prioridad }) =>
   p ? <span className={cn('inline-flex items-center h-6 px-2 rounded-md text-[11px] font-medium', PRIO[p].cls)}>{PRIO[p].label}</span> : <span className="text-text-subtle text-[12px]">—</span>;
@@ -63,8 +63,8 @@ export const FechaTarea = ({ t }: { t: Tarea }) => (
 /* DrawCheckbox (EasyUI) */
 export function Check({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
-    <button role="checkbox" aria-checked={on} aria-label={label} onClick={(e) => { e.stopPropagation(); onClick(); }} className={cn('size-[18px] rounded-md border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink' : 'border-border-hover bg-white hover:border-text-muted')}>
-      <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="#FAFAF6" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+    <button role="checkbox" aria-checked={on} aria-label={label} onClick={(e) => { e.stopPropagation(); onClick(); }} className={cn('size-[18px] rounded-md border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink' : 'border-border-hover bg-surface hover:border-text-muted')}>
+      <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="var(--on-ink)" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
         <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: on ? 1 : 0, opacity: on ? 1 : 0 }} transition={{ duration: 0.25, ease: 'easeOut' }} />
       </svg>
     </button>
@@ -120,9 +120,9 @@ function useEventos(): Evento[] {
 /* ───────── workspace ───────── */
 type VistaDB = 'tabla' | 'cliente' | 'cronograma' | 'calendario' | 'etapas';
 
-export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => void; Etapas: React.ComponentType<{ abrir: (id: string) => void }> }) {
+export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => void; Etapas: React.ComponentType<{ abrir: (id: string) => void; quien: string[] }> }) {
   const [vista, setVista] = useState<VistaDB>('tabla');
-  const [quien, setQuien] = useState<string | null>(null);
+  const [quien, setQuien] = useState<string[]>([]);
   const [nueva, setNueva] = useState(false);
   const [plantilla, setPlantilla] = useState(false);
   const [autos, setAutos] = useState(false);
@@ -147,15 +147,7 @@ export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => vo
         <div className="max-w-full scroll-x">
           <PillNav size="sm" items={(Object.keys(labels) as VistaDB[]).map((v) => ({ id: v, label: labels[v] }))} value={vista} onChange={(v) => setVista(v as VistaDB)} />
         </div>
-        {vista !== 'etapas' && (
-          <div className="flex items-center gap-1" role="group" aria-label="Filtrar por persona">
-            {EQUIPO.map((m) => (
-              <button key={m.id} onClick={() => setQuien(quien === m.id ? null : m.id)} aria-pressed={quien === m.id} aria-label={'Solo ' + m.nombre} className={cn('rounded-full p-0.5 transition-opacity', quien === m.id ? 'ring-2 ring-rojo' : quien ? 'opacity-35 hover:opacity-80' : 'hover:opacity-80')}>
-                <Avatar id={m.id} size={24} />
-              </button>
-            ))}
-          </div>
-        )}
+        <FiltroResponsables value={quien} onChange={setQuien} etapas={vista === 'etapas'} />
       </div>
 
       <Fade k={vista}>
@@ -163,7 +155,7 @@ export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => vo
         {vista === 'cliente' && <PorCliente quien={quien} />}
         {vista === 'cronograma' && <Cronograma quien={quien} />}
         {vista === 'calendario' && <Calendario quien={quien} abrir={abrir} />}
-        {vista === 'etapas' && <Etapas abrir={abrir} />}
+        {vista === 'etapas' && <Etapas abrir={abrir} quien={quien} />}
       </Fade>
       <NuevoProyectoSheet open={plantilla} onClose={() => setPlantilla(false)} onCreado={(id) => { setPlantilla(false); toast('Proyecto creado con sus tareas y el acceso del cliente'); abrir(id); }} />
       <AutomatizacionesSheet open={autos} onClose={() => setAutos(false)} />
@@ -172,10 +164,68 @@ export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => vo
 }
 
 const ORDEN_P: Record<string, number> = { alta: 0, media: 1, baja: 2 };
-const filtrar = (ts: Tarea[], quien: string | null) => (quien ? ts.filter((t) => t.quien.includes(quien)) : ts);
+const filtrar = (ts: Tarea[], quien: string[]) => (quien.length ? ts.filter((t) => t.quien.some((q) => quien.includes(q))) : ts);
+
+/* Botón "Responsables": filtra por una o varias personas en todas las vistas */
+function FiltroResponsables({ value, onChange, etapas }: { value: string[]; onChange: (v: string[]) => void; etapas: boolean }) {
+  const { tareas, proyectos, sesion } = useStore();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const yo = (sesion as any)?.persona as string | undefined;
+  useEffect(() => {
+    if (!open) return;
+    const fuera = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', fuera); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const cuenta = (id: string) => etapas ? proyectos.filter((p) => p.equipo.includes(id)).length : tareas.filter((t) => t.estado !== 'hecha' && t.quien.includes(id)).length;
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  const activos = EQUIPO.filter((m) => value.includes(m.id));
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex items-center gap-1">
+        <button onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true"
+          className={cn('inline-flex items-center gap-2 h-8 pl-3 pr-2.5 rounded-full text-[12px] font-medium border transition-colors', value.length ? 'bg-ink text-on-ink border-ink' : 'bg-surface border-border text-text-secondary hover:text-text-primary hover:border-border-hover')}>
+          <Users className="size-3.5" />
+          {value.length === 0 ? 'Responsables' : value.length === 1 ? activos[0]?.nombre : `${value.length} personas`}
+          {value.length > 0 && <span className="flex -space-x-1.5">{activos.slice(0, 3).map((m) => <Avatar key={m.id} id={m.id} size={18} ring />)}</span>}
+          <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
+        </button>
+        {value.length > 0 && (
+          <button onClick={() => onChange([])} aria-label="Quitar filtro" title="Quitar filtro" className="grid place-items-center size-8 rounded-full text-text-muted hover:text-text-primary hover:bg-surface-raised"><X className="size-3.5" /></button>
+        )}
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }} transition={motionTransitions.springSnappy}
+            className="absolute right-0 top-full mt-2 z-40 w-[248px] origin-top-right rounded-xl border border-border bg-surface p-1.5 shadow-[var(--shadow-elevated)]" role="menu">
+            <p className="px-2.5 pt-1.5 pb-2 text-[11px] text-text-muted">{etapas ? 'Proyectos donde participa' : 'Tareas abiertas de'}</p>
+            {EQUIPO.map((m) => {
+              const on = value.includes(m.id);
+              return (
+                <button key={m.id} role="menuitemcheckbox" aria-checked={on} onClick={() => toggle(m.id)}
+                  className="w-full flex items-center gap-2.5 h-10 px-2.5 rounded-lg text-left text-[13px] hover:bg-surface-hover">
+                  <span className={cn('size-4 rounded-[5px] border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink text-on-ink' : 'border-border-hover')}>{on && <CheckIcon className="size-3" strokeWidth={3} />}</span>
+                  <Avatar id={m.id} size={22} />
+                  <span className="flex-1 truncate">{m.nombre}{m.id === yo && <span className="text-text-subtle"> (vos)</span>}</span>
+                  <span className="tnum text-[11px] text-text-muted">{cuenta(m.id)}</span>
+                </button>
+              );
+            })}
+            <div className="flex items-center justify-between gap-2 mt-1 pt-1.5 px-1 border-t border-border-subtle">
+              {yo ? <button onClick={() => { onChange([yo]); setOpen(false); }} className="h-8 px-2 rounded-md text-[12px] font-medium text-text-secondary hover:text-text-primary">Solo lo mío</button> : <span />}
+              <button onClick={() => onChange([])} disabled={!value.length} className="h-8 px-2 rounded-md text-[12px] text-text-muted hover:text-text-primary disabled:opacity-40">Ver todo</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /* ── Tabla (vista "All Projects" de Notion) ── */
-function Tabla({ quien, nueva, setNueva }: { quien: string | null; nueva: boolean; setNueva: (b: boolean) => void }) {
+function Tabla({ quien, nueva, setNueva }: { quien: string[]; nueva: boolean; setNueva: (b: boolean) => void }) {
   const tareas = useTareas();
   const { abrirTarea } = useStore();
   const [verHechas, setVerHechas] = useState(true);
@@ -196,6 +246,9 @@ function Tabla({ quien, nueva, setNueva }: { quien: string | null; nueva: boolea
             </tr>
           </thead>
           <tbody className="divide-y divide-border border-t border-border">
+            {!lista.length && !nueva && (
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-[13px] text-text-muted">{quien.length ? 'No hay tareas para ' + quien.map((q) => EQUIPO.find((m) => m.id === q)?.nombre ?? '').join(' ni ') + (verHechas ? '.' : ' sin terminar.') : 'Todavía no hay tareas.'}</td></tr>
+            )}
             {nueva && <FilaNueva onDone={() => setNueva(false)} />}
             <AnimatePresence initial={false}>
               {lista.map((t) => (
@@ -236,9 +289,9 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
   };
   const sel = 'h-8 rounded-lg bg-surface-raised px-2 text-[12px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]';
   return (
-    <tr className="bg-[#FBFAF6]">
+    <tr className="bg-surface-hover">
       <td className="px-3 pl-4 py-2"><select id="nt-cliente" aria-label="Cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} className={sel}>{Object.entries(CLIENTES).map(([k, c]) => <option key={k} value={k}>{c.nombre}</option>)}</select></td>
-      <td className="px-3 py-2"><input id="nt-titulo" autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && guardar()} placeholder="Qué hay que hacer" className={cn(sel, 'w-full bg-white border border-border')} /></td>
+      <td className="px-3 py-2"><input id="nt-titulo" autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && guardar()} placeholder="Qué hay que hacer" className={cn(sel, 'w-full bg-surface border border-border')} /></td>
       <td className="px-3 py-2"><select id="nt-quien" aria-label="Responsable" value={quien} onChange={(e) => setQuien(e.target.value)} className={sel}>{EQUIPO.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></td>
       <td className="px-3 py-2 text-[12px] text-text-muted">Sin empezar</td>
       <td className="px-3 py-2 text-[12px] text-text-muted">Media</td>
@@ -249,7 +302,7 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
 }
 
 /* ── Por cliente (vista "Works by Client") ── */
-function PorCliente({ quien }: { quien: string | null }) {
+function PorCliente({ quien }: { quien: string[] }) {
   const tareas = useTareas();
   const { abrirTarea } = useStore();
   const ts = filtrar(tareas, quien);
@@ -260,14 +313,14 @@ function PorCliente({ quien }: { quien: string | null }) {
         {clientes.map((k) => {
           const propias = ts.filter((t) => t.cliente === k).sort((a, b) => (a.estado === 'hecha' ? 1 : 0) - (b.estado === 'hecha' ? 1 : 0));
           return (
-            <div key={k} className="rounded-2xl bg-[#F3F2EC] p-2">
+            <div key={k} className="rounded-2xl bg-column p-2">
               <div className="flex items-center justify-between px-2 pt-1.5 pb-3">
                 <ClienteTag id={k} className="font-medium" />
                 <span className="text-[11px] text-text-muted tnum">{propias.length}</span>
               </div>
               <div className="space-y-2">
                 {propias.map((t) => (
-                  <motion.div key={t.id} layout transition={motionTransitions.springSmooth} onClick={() => abrirTarea(t.id)} className={cn('rounded-xl bg-white border border-border p-3 shadow-xs space-y-2.5 cursor-pointer hover:border-border-hover', t.estado === 'hecha' && 'opacity-60')}>
+                  <motion.div key={t.id} layout transition={motionTransitions.springSmooth} onClick={() => abrirTarea(t.id)} className={cn('rounded-xl bg-surface border border-border p-3 shadow-xs space-y-2.5 cursor-pointer hover:border-border-hover', t.estado === 'hecha' && 'opacity-60')}>
                     <p className="text-[13px] font-medium leading-snug">{t.titulo}</p>
                     <div className="flex flex-wrap gap-1.5"><EstadoPill t={t} /><PrioridadTag p={t.prioridad} /></div>
                     <div className="flex items-center justify-between"><FechaTarea t={t} /><AvatarStack ids={t.quien} size={20} /></div>
@@ -283,7 +336,7 @@ function PorCliente({ quien }: { quien: string | null }) {
 }
 
 /* ── Cronograma (vista "Gantt") ── */
-function Cronograma({ quien }: { quien: string | null }) {
+function Cronograma({ quien }: { quien: string[] }) {
   const tareas = useTareas();
   const { abrirTarea } = useStore();
   const ts = filtrar(tareas, quien);
@@ -320,7 +373,7 @@ function Cronograma({ quien }: { quien: string | null }) {
           <div aria-hidden className="absolute top-0 bottom-0 w-px bg-rojo z-[5]" style={{ left: 240 + hoyX + W / 2 }} />
           {grupos.map(({ e, ts: gts }) => (
             <div key={e}>
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#FBFAF6] border-b border-border sticky left-0 w-[240px] z-10">
+              <div className="flex items-center gap-2 px-4 py-2 bg-surface-hover border-b border-border sticky left-0 w-[240px] z-10">
                 <span className={cn('size-1.5 rounded-full', ESTADOS[e].dot)} /><span className="text-[12px] font-medium">{ESTADOS[e].label}</span><span className="text-[11px] text-text-muted tnum">{gts.length}</span>
               </div>
               {gts.map((t) => {
@@ -363,13 +416,13 @@ function Cronograma({ quien }: { quien: string | null }) {
 
 /* ── Calendario de entregas ── */
 const NOMBRES_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-function Calendario({ quien, abrir }: { quien: string | null; abrir: (id: string) => void }) {
+function Calendario({ quien, abrir }: { quien: string[]; abrir: (id: string) => void }) {
   const todos = useEventos();
   const { abrirTarea } = useStore();
   const [mes, setMes] = useState(Number(HOY.slice(5, 7)) - 1 + (Number(HOY.slice(0, 4)) - 2026) * 12);
   const [soloEntregas, setSoloEntregas] = useState(false);
   const [sel, setSel] = useState<string>(() => [...todos].map((e) => e.dia).filter((d) => d >= HOY).sort()[0] ?? HOY);
-  const eventos = todos.filter((e) => (soloEntregas ? e.tipo !== 'tarea' : true) && (!quien || e.tipo !== 'tarea' || e.tarea!.quien.includes(quien)));
+  const eventos = todos.filter((e) => (soloEntregas ? e.tipo !== 'tarea' : true) && (!quien.length || e.tipo !== 'tarea' || e.tarea!.quien.some((q) => quien.includes(q))));
   const porDia = useMemo(() => {
     const m = new Map<string, Evento[]>();
     eventos.forEach((e) => m.set(e.dia, [...(m.get(e.dia) ?? []), e]));
@@ -391,7 +444,7 @@ function Calendario({ quien, abrir }: { quien: string | null; abrir: (id: string
     return (
       <span
         key={e.id}
-        className={cn('flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] leading-tight min-w-0', entrega ? 'bg-ink text-[#FAFAF6]' : 'bg-surface-raised text-text-primary', e.hecho && 'opacity-50')}
+        className={cn('flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] leading-tight min-w-0', entrega ? 'bg-ink text-on-ink' : 'bg-surface-raised text-text-primary', e.hecho && 'opacity-50')}
         title={`${CLIENTES[e.cliente]?.nombre ?? ''} · ${e.titulo}`}
       >
         {entrega ? <Flag className="size-2.5 shrink-0 text-rojo" fill="currentColor" /> : <span className="size-1.5 rounded-full shrink-0" style={{ background: color }} />}
@@ -433,12 +486,12 @@ function Calendario({ quien, abrir }: { quien: string | null; abrir: (id: string
                   key={i}
                   disabled={!valido}
                   onClick={() => setSel(dia)}
-                  className={cn('relative flex flex-col items-stretch justify-start text-left min-h-[64px] sm:min-h-[104px] p-1.5 border-b border-r border-border-subtle [&:nth-child(7n)]:border-r-0 transition-colors', valido ? 'hover:bg-surface-hover' : 'bg-[#FBFAF6]', esSel && 'bg-[#FBF4F1]')}
+                  className={cn('relative flex flex-col items-stretch justify-start text-left min-h-[64px] sm:min-h-[104px] p-1.5 border-b border-r border-border-subtle [&:nth-child(7n)]:border-r-0 transition-colors', valido ? 'hover:bg-surface-hover' : 'bg-surface-hover', esSel && 'bg-[#FBF4F1]')}
                 >
                   {valido && (
                     <span className={cn('inline-grid place-items-center size-6 rounded-full text-[12px] tnum', esHoy ? 'bg-rojo text-white font-bold' : 'text-text-secondary')}>{d}</span>
                   )}
-                  {esSel && <motion.span layoutId="cal-sel" className="absolute inset-0 ring-2 ring-inset ring-[#C74227]/40 pointer-events-none" transition={motionTransitions.springSnappy} />}
+                  {esSel && <motion.span layoutId="cal-sel" className="absolute inset-0 ring-2 ring-inset ring-[var(--accent-ring)] pointer-events-none" transition={motionTransitions.springSnappy} />}
                   <div className="hidden sm:flex flex-col gap-0.5 mt-1">
                     {evs.slice(0, 3).map((e) => chip(e))}
                     {evs.length > 3 && <span className="text-[10px] text-text-muted px-1">+{evs.length - 3} más</span>}

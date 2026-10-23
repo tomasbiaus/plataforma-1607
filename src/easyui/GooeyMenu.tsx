@@ -79,9 +79,9 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
 
       {/* Capa gooey: pastilla + panel que gotea */}
       <div className="absolute left-0 top-0 pointer-events-none" style={{ width, height: panelY + panelHeight, filter: `url(#${fid})`, transform: 'translateZ(0)', isolation: 'isolate' }}>
-        <div className="absolute left-0 top-0 bg-[#1A1A1A]" style={{ width, height: pillH, borderRadius: pillH / 2 }} />
+        <div className="absolute left-0 top-0 bg-ink" style={{ width, height: pillH, borderRadius: pillH / 2 }} />
         <motion.div
-          className="absolute left-0 top-0 bg-[#1A1A1A]"
+          className="absolute left-0 top-0 bg-ink"
           style={{ width, height: panelHeight, transformOrigin: '50% 0%', borderRadius: 14, willChange: 'transform' }}
           initial={false}
           animate={open ? { y: panelY, scaleY: 1 } : { y: 0, scaleY: pillH / panelHeight }}
@@ -100,9 +100,9 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
       >
         <span className="flex items-center gap-1.5 min-w-0">
           {selected.dot && <span className="size-1.5 rounded-full shrink-0" style={{ background: selected.dot }} />}
-          <span className="text-[11px] font-medium text-[#F4F4F4] truncate">{selected.label}</span>
+          <span className="text-[11px] font-medium text-on-ink truncate">{selected.label}</span>
         </span>
-        <motion.svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B5B4AD" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" animate={{ rotate: open ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+        <motion.svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-on-ink opacity-60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" animate={{ rotate: open ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
           <path d="m6 9 6 6 6-6" />
         </motion.svg>
       </button>
@@ -126,14 +126,14 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => choose(i)}
                 variants={{ open: { opacity: 1, y: 0, transition: ROW_SPRING }, closed: { opacity: 0, y: -8, transition: SNAP_SPRING } }}
-                className={cn('mx-[5px] flex cursor-pointer items-center justify-between rounded-[10px] px-2 text-[11px] font-medium transition-colors duration-150', i === activeIndex ? 'bg-[#333331] text-white' : 'text-[#D6D5CF]')}
+                className={cn('mx-[5px] flex cursor-pointer items-center justify-between rounded-[10px] px-2 text-[11px] font-medium transition-colors duration-150', i === activeIndex ? 'bg-ink-hover text-on-ink' : 'text-on-ink opacity-75')}
                 style={{ height: rowH }}
               >
                 <span className="flex items-center gap-1.5">
                   {o.dot && <span className="size-1.5 rounded-full" style={{ background: o.dot }} />}
                   {o.label}
                 </span>
-                {o.value === value && <span className="size-1.5 rounded-full bg-[#C74227]" />}
+                {o.value === value && <span className="size-1.5 rounded-full bg-rojo" />}
               </motion.li>
             ))}
           </motion.ul>

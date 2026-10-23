@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutGrid, FolderKanban, Users, Lock, Zap, LogOut, ArrowLeft, ArrowRight, Eye, Upload, Send, FileText, Plus, CornerDownRight, Copy } from 'lucide-react';
+import { LayoutGrid, FolderKanban, Users, Lock, Zap, LogOut, ArrowLeft, ArrowRight, Eye, Upload, Send, FileText, Plus, CornerDownRight, Copy, UserRound } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Stepper } from './easyui/stepper';
 import { OriginDropdown } from './easyui/OriginDropdown';
-import { Logo, Avatar, AvatarStack, EstadoBadge, PillNav, Btn, Card, EtapaBar, Preview, Fade, useToast } from './ui';
+import { Logo, TemaSwitch, Avatar, AvatarStack, EstadoBadge, PillNav, Btn, Card, EtapaBar, Preview, Fade, useToast } from './ui';
 import { useStore, useTareas } from './store';
-import { TareaPanel } from './Paneles';
+import { TareaPanel, CuentaSheet } from './Paneles';
 import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, type Proyecto, type Tarea } from './data';
 import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
@@ -28,6 +28,7 @@ export default function Studio({ yo }: { yo: string }) {
   const [vista, setVista] = useState<Vista>('resumen');
   const [abierto, setAbierto] = useState<string | null>(null);
   const [comoCliente, setComoCliente] = useState<string | null>(null);
+  const [cuenta, setCuenta] = useState(false);
   const me = persona(yo);
   const nav = esAdmin(yo) ? [...NAV, { id: 'numeros' as Vista, label: 'Números', icon: Lock }] : NAV;
 
@@ -41,7 +42,7 @@ export default function Studio({ yo }: { yo: string }) {
   return (
     <div className="min-h-full lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
       {/* Sidebar escritorio */}
-      <aside className="hidden lg:flex flex-col sticky top-0 h-screen border-r border-border px-4 py-6 bg-[#F6F5F0]">
+      <aside className="hidden lg:flex flex-col sticky top-0 h-screen border-r border-border px-4 py-6 bg-sidebar">
         <div className="px-2 mb-9 flex items-center gap-2.5">
           <Logo className="w-[58px]" />
           <span className="text-[11px] text-text-muted leading-tight">Estudio</span>
@@ -51,7 +52,7 @@ export default function Studio({ yo }: { yo: string }) {
             const on = vista === n.id;
             return (
               <button key={n.id} onClick={() => ir(n.id)} className={cn('relative flex items-center gap-3 h-9 px-3 rounded-full text-[13px] font-medium transition-colors', on ? 'text-text-primary' : 'text-text-muted hover:text-text-primary')}>
-                {on && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-full bg-white shadow-[0_1px_3px_rgba(26,26,26,.08)]" transition={motionTransitions.springMorph} />}
+                {on && <motion.span layoutId="side-pill" className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_3px_rgba(26,26,26,.08)]" transition={motionTransitions.springMorph} />}
                 <n.icon className="relative size-4" strokeWidth={1.75} />
                 <span className="relative">{n.label}</span>
                 {on && <motion.span layoutId="side-dot" className="relative ml-auto size-[7px] rounded-full bg-rojo" transition={motionTransitions.springMorph} />}
@@ -59,7 +60,8 @@ export default function Studio({ yo }: { yo: string }) {
             );
           })}
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3">
+          <TemaSwitch className="ml-1" />
           <OriginDropdown
             side="top"
             className="w-full [&>button]:w-full [&>button]:h-12 [&>button]:rounded-2xl [&>button]:justify-between"
@@ -69,7 +71,10 @@ export default function Studio({ yo }: { yo: string }) {
                 <span className="text-left"><span className="block text-[13px]">{me.nombre}</span><span className="block text-[11px] text-text-muted font-normal">{me.rol}</span></span>
               </span>
             }
-            items={[{ id: 'out', label: 'Cerrar sesión', icon: <LogOut className="size-3.5" />, onSelect: () => salir() }]}
+            items={[
+              { id: 'cuenta', label: 'Mi cuenta', description: 'Contraseña y apariencia', icon: <UserRound className="size-3.5" />, onSelect: () => setCuenta(true) },
+              { id: 'out', label: 'Cerrar sesión', icon: <LogOut className="size-3.5" />, onSelect: () => salir() },
+            ]}
           />
         </div>
       </aside>
@@ -78,7 +83,7 @@ export default function Studio({ yo }: { yo: string }) {
       <header className="lg:hidden sticky z-30 gutter pt-3 pb-3 bg-[var(--bg)]/90 backdrop-blur-xl border-b border-border" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center justify-between mb-3">
           <Logo className="w-[52px]" />
-          <button onClick={() => salir()} className="flex items-center gap-2 text-[12px] text-text-muted"><Avatar id={yo} size={26} /> Salir</button>
+          <button onClick={() => setCuenta(true)} className="flex items-center gap-2 text-[12px] text-text-muted" aria-label="Mi cuenta"><Avatar id={yo} size={26} /> Mi cuenta</button>
         </div>
         <PillNav size="sm" items={nav.map((n) => ({ id: n.id, label: n.label }))} value={vista} onChange={ir} />
       </header>
@@ -98,6 +103,7 @@ export default function Studio({ yo }: { yo: string }) {
           )}
         </Fade>
       </main>
+      <CuentaSheet open={cuenta} onClose={() => setCuenta(false)} />
       <TareaPanel abrirProyecto={(id) => { setVista('proyectos'); setAbierto(id); }} />
     </div>
   );
@@ -208,7 +214,7 @@ function Feed({ items }: { items: { quien: string; texto: string; cuando: string
       <AnimatePresence initial={false}>
         {items.map((a, i) => (
           <motion.li key={a.texto + a.cuando + i} layout initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={motionTransitions.springGentle} className="flex gap-3">
-            {a.quien === 'cliente' ? <span className="size-6 rounded-full bg-[#FBEAE5] grid place-items-center shrink-0"><span className="size-1.5 rounded-full bg-rojo" /></span> : a.quien === 'auto' ? <span className="size-6 rounded-full bg-rojo text-white grid place-items-center shrink-0"><Zap className="size-3.5" /></span> : <Avatar id={a.quien} size={24} />}
+            {a.quien === 'cliente' ? <span className="size-6 rounded-full bg-err-bg grid place-items-center shrink-0"><span className="size-1.5 rounded-full bg-rojo" /></span> : a.quien === 'auto' ? <span className="size-6 rounded-full bg-rojo text-white grid place-items-center shrink-0"><Zap className="size-3.5" /></span> : <Avatar id={a.quien} size={24} />}
             <p className="text-[13px] leading-snug min-w-0">
               {a.quien === 'auto' ? <span className="font-medium">Automatización: </span> : a.quien !== 'cliente' && <span className="font-medium">{persona(a.quien)?.nombre} </span>}
               <span className="text-text-secondary">{a.texto}</span>
@@ -222,8 +228,9 @@ function Feed({ items }: { items: { quien: string; texto: string; cuando: string
 }
 
 /* ───────── Tablero de proyectos ───────── */
-function Tablero({ abrir }: { abrir: (id: string) => void }) {
-  const { proyectos } = useStore();
+function Tablero({ abrir, quien = [] }: { abrir: (id: string) => void; quien?: string[] }) {
+  const { proyectos: todos } = useStore();
+  const proyectos = quien.length ? todos.filter((p) => p.equipo.some((q) => quien.includes(q))) : todos;
   const cols = [...ETAPAS.map((e, i) => ({ i, e })), { i: 6, e: 'Terminado' }];
   return (
     <div>
@@ -233,14 +240,14 @@ function Tablero({ abrir }: { abrir: (id: string) => void }) {
           {cols.map((c) => {
             const ps = proyectos.filter((p) => p.etapa === c.i);
             return (
-              <div key={c.e} className="rounded-2xl bg-[#F3F2EC] p-2 min-h-[260px]">
+              <div key={c.e} className="rounded-2xl bg-column p-2 min-h-[260px]">
                 <div className="flex items-center justify-between px-2 pt-1.5 pb-3">
                   <span className="text-[12px] font-medium flex items-center gap-2">{ps.length > 0 && c.i < 6 && <span className="size-1.5 rounded-full bg-rojo" />}{c.e}</span>
                   <span className="text-[11px] text-text-muted tnum">{ps.length}</span>
                 </div>
                 <div className="space-y-2">
                   {ps.map((p) => (
-                    <motion.button key={p.id} layoutId={'card-' + p.id} whileHover={{ y: -2 }} transition={motionTransitions.springSnappy} onClick={() => abrir(p.id)} className="w-full text-left rounded-xl bg-white border border-border p-3 shadow-xs">
+                    <motion.button key={p.id} layoutId={'card-' + p.id} whileHover={{ y: -2 }} transition={motionTransitions.springSnappy} onClick={() => abrir(p.id)} className="w-full text-left rounded-xl bg-surface border border-border p-3 shadow-xs">
                       <span className="flex gap-1 mb-3">{p.colores.map((col) => <span key={col} className="h-1.5 flex-1 rounded-full" style={{ background: col, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.06)' }} />)}</span>
                       <span className="block font-medium text-[13px]">{p.cliente}</span>
                       <span className="block text-[11px] text-text-muted">{p.servicio}</span>
@@ -396,7 +403,7 @@ function EntregablesEstudio({ p }: { p: Proyecto }) {
                 ) : null}
                 <div className="mt-auto pt-4 flex flex-wrap gap-2">
                   {(e.estado === 'interno' || e.estado === 'cambios') && (
-                    <label className={cn('inline-flex items-center justify-center gap-2 h-8 px-3.5 rounded-full text-[12px] font-medium cursor-pointer transition-colors bg-surface-raised hover:bg-[#E5E4DD]', subiendo === e.id && 'opacity-50 pointer-events-none')}>
+                    <label className={cn('inline-flex items-center justify-center gap-2 h-8 px-3.5 rounded-full text-[12px] font-medium cursor-pointer transition-colors bg-surface-raised hover:bg-border', subiendo === e.id && 'opacity-50 pointer-events-none')}>
                       <Upload className="size-3.5" /> {subiendo === e.id ? 'Subiendo…' : 'Subir archivos'}
                       <input type="file" multiple className="sr-only" onChange={(ev) => { subir(e.id, ev.target.files); ev.target.value = ''; }} />
                     </label>
