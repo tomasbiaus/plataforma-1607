@@ -20,6 +20,8 @@ export type NuevoProyecto = { cliente: string; plan: Plan; inicio: string; email
 export type NumerosEstado = { tiene_clave: boolean; abierto: boolean } | null;
 export type Ajustes = { pct_equipo: number; plan_anual: Record<string, any> };
 
+export type Notificacion = { id: string; tipo: 'asignada' | 'cambio' | 'cliente'; texto: string; detalle: string | null; actor: string | null; proyecto: string | null; tarea: string | null; leida: boolean; creado: string };
+
 type Store = {
   listo: boolean;
   error: string | null;
@@ -53,6 +55,11 @@ type Store = {
   toggleAuto: (id: string) => void;
   autoLog: { texto: string; cuando: string }[];
   avisos: { id: number; texto: string }[];
+  notifs: Notificacion[];
+  marcarLeidas: (ids?: string[]) => Promise<void>;
+  slackUrl: string | null;
+  guardarSlack: (url: string) => Promise<string | null>;
+  probarSlack: () => Promise<string | null>;
   // Números
   numeros: NumerosEstado;
   numerosCrear: (clave: string) => Promise<string | null>;
@@ -69,6 +76,7 @@ type Store = {
 };
 
 const Ctx = createContext<Store>(null as any);
+const mapNotif = (n: any): Notificacion => ({ id: n.id, tipo: n.tipo, texto: n.texto, detalle: n.detalle, actor: n.actor, proyecto: n.proyecto_id, tarea: n.tarea_id, leida: n.leida, creado: n.creado });
 
 // El link de recuperación llega con #...type=recovery; lo miramos antes de que Supabase limpie la URL
 const VIENE_DE_RECUPERACION = typeof window !== 'undefined' && /type=recovery/.test(window.location.hash);
@@ -109,6 +117,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [autos, setAutos] = useState<Automatizacion[]>([]);
   const [autoLog, setAutoLog] = useState<{ texto: string; cuando: string }[]>([]);
   const [avisos, setAvisos] = useState<{ id: number; texto: string }[]>([]);
+  const [notifs, setNotifs] = useState<Notificacion[]>([]);
+  const [slackUrl, setSlackUrl] = useState<string | null>(null);
+  const vistosNotif = useRef<Set<string> | null>(null);
   const [numeros, setNumeros] = useState<NumerosEstado>(null);
   const [cuotas, setCuotas] = useState<(Pago & { proyecto: string })[]>([]);
   const [cobrosExtra, setCobrosExtra] = useState<CobroExtra[]>([]);
@@ -216,7 +227,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         historial: (hist.data ?? []).filter((h: any) => h.tarea_id === t.id).map((h: any) => ({ quien: quienDe(h.tipo, h.quien), texto: h.texto, cuando: hace(h.creado) })),
       })));
       setSesion((s) => (s?.tipo === 'estudio' ? s : { tipo: 'estudio', persona: yo.id }));
+      const { data: ns } = await supabase.from('notificaciones').select('*').order('creado', { ascending: false }).limit(60);
+      const lista_n: Notificacion[] = (ns ?? []).map(mapNotif);
+      // los que llegaron mientras no estaba la conexión en vivo, también como aviso
+      if (vistosNotif.current) lista_n.filter((n) => !n.leida && !vistosNotif.current!.has(n.id)).reverse().forEach((n) => avisar(n.texto));
+      vistosNotif.current = new Set(lista_n.map((n) => n.id));
+      setNotifs(lista_n);
       if (yo.rol === 'admin') {
+        const { data: cfg } = await supabase.from('avisos_config').select('slack_url').maybeSingle();
+        setSlackUrl(cfg?.slack_url ?? null);
         const { data: est } = await supabase.rpc('numeros_estado');
         setNumeros(est ?? { tiene_clave: false, abierto: false });
         if (est?.abierto) await cargarNumeros();
@@ -235,10 +254,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (ev === 'PASSWORD_RECOVERY') setRecuperando(true);
       if (ev === 'SIGNED_OUT') { setSesion(null); setProyectos([]); setTareas([]); setNumeros(null); }
     });
-    // refresco suave cada 60 s para ver lo que cambian los demás
+    // refresco suave cada 60 s para ver lo que cambian los demás (y respaldo si se corta el tiempo real)
     const iv = setInterval(() => { supabase.auth.getSession().then(({ data }) => data.session && recargar()); }, 60000);
     return () => { sub.subscription.unsubscribe(); clearInterval(iv); };
   }, [recargar]);
+
+  // campanita en vivo
+  const yoId = sesion?.tipo === 'estudio' ? sesion.persona : null;
+  useEffect(() => {
+    if (!yoId || typeof (supabase as any).channel !== 'function') return;
+    const ch = (supabase as any)
+      .channel('avisos-' + yoId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: 'para=eq.' + yoId }, (payload: any) => {
+        const n = mapNotif(payload.new);
+        if (vistosNotif.current?.has(n.id)) return;
+        vistosNotif.current?.add(n.id);
+        setNotifs((x) => [n, ...x.filter((y) => y.id !== n.id)]);
+        avisar(n.texto);
+        if (n.tipo === 'cliente' || n.tipo === 'asignada') recargar();
+      })
+      .subscribe();
+    return () => { (supabase as any).removeChannel(ch); };
+  }, [yoId]);
 
   // proyectos con sus cuotas (solo con Números abierto)
   const proyectosConPagos = proyectos.map((p) => {
@@ -255,7 +292,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const store: Store = {
     listo, error, proyectos: proyectosConPagos, tareas, sesion, email, setSesion, recargar,
-    tareaAbierta, abrirTarea, autos, autoLog, avisos, numeros, cobrosExtra, pagosEquipo, ajustes,
+    tareaAbierta, abrirTarea, autos, autoLog, avisos, numeros, notifs, slackUrl,
+    marcarLeidas: async (ids) => {
+      const cuales = ids ?? notifs.filter((n) => !n.leida).map((n) => n.id);
+      if (!cuales.length) return;
+      setNotifs((x) => x.map((n) => (cuales.includes(n.id) ? { ...n, leida: true } : n)));
+      const { error } = await supabase.from('notificaciones').update({ leida: true }).in('id', cuales);
+      if (error) fallo(error);
+    },
+    guardarSlack: async (url) => {
+      const { error } = await supabase.rpc('avisos_slack', { url: url.trim() });
+      if (error) return error.message;
+      setSlackUrl(url.trim() || null);
+      return null;
+    },
+    probarSlack: async () => {
+      const { error } = await supabase.rpc('avisos_probar');
+      return error ? error.message : null;
+    }, cobrosExtra, pagosEquipo, ajustes,
 
     entrar: async (mail, clave) => {
       const { error } = await supabase.auth.signInWithPassword({ email: mail.trim().toLowerCase(), password: clave });
@@ -368,8 +422,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       if (patch.quien) {
         (async () => {
-          await supabase.from('tarea_responsables').delete().eq('tarea_id', tid);
-          if (patch.quien!.length) await supabase.from('tarea_responsables').insert(patch.quien!.map((q) => ({ tarea_id: tid, profile_id: q })));
+          // solo agrega/saca a quien cambió, así no se re-avisa a los que ya estaban
+          const { data: hoy } = await supabase.from('tarea_responsables').select('profile_id').eq('tarea_id', tid);
+          const antes = (hoy ?? []).map((x: any) => x.profile_id as string);
+          const sacar = antes.filter((q) => !patch.quien!.includes(q));
+          const sumar = patch.quien!.filter((q) => !antes.includes(q));
+          if (sacar.length) await supabase.from('tarea_responsables').delete().eq('tarea_id', tid).in('profile_id', sacar);
+          if (sumar.length) await supabase.from('tarea_responsables').insert(sumar.map((q) => ({ tarea_id: tid, profile_id: q })));
         })().catch(fallo);
       }
       if (log) supabase.from('tarea_historial').insert({ tarea_id: tid, quien: (sesion as any)?.persona, texto: log }).then(({ error }) => error && fallo(error));

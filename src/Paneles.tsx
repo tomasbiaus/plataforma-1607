@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut, Archive, ArchiveRestore, Hash } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
 import { Avatar, Btn, TemaSwitch, useToast, ConfirmBtn } from './ui';
 import { useStore, useArchivo, type NuevoProyecto } from './store';
-import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, type Prioridad } from './data';
+import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
 import { DatePicker, DateRangePicker } from './easyui/DatePicker';
@@ -329,7 +329,7 @@ function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; labe
 }
 
 export function AutomatizacionesSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { autos, toggleAuto, autoLog } = useStore();
+  const { autos, toggleAuto, autoLog, sesion } = useStore();
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="right" className="max-w-[32rem] bg-[var(--surface)] border-border text-text-primary">
@@ -362,6 +362,7 @@ export function AutomatizacionesSheet({ open, onClose }: { open: boolean; onClos
               <p className="text-[12px] text-text-muted">Todavía no se disparó ninguna.</p>
             )}
           </div>
+          {esAdmin((sesion as any)?.persona) && <SlackConfig />}
         </SheetBody>
       </SheetContent>
     </Sheet>
@@ -421,5 +422,53 @@ export function CuentaSheet({ open, onClose }: { open: boolean; onClose: () => v
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/* Avisos a Slack: el admin pega el link del webhook del canal */
+function SlackConfig() {
+  const { slackUrl, guardarSlack, probarSlack } = useStore();
+  const toast = useToast();
+  const [url, setUrl] = useState(slackUrl ?? '');
+  const [ayuda, setAyuda] = useState(!slackUrl);
+  const [error, setError] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  React.useEffect(() => setUrl(slackUrl ?? ''), [slackUrl]);
+  const guardar = async () => {
+    setOcupado(true); setError(null);
+    const err = await guardarSlack(url);
+    if (!err && url.trim()) { const e2 = await probarSlack(); if (e2) setError(e2); else toast('Conectado. Mandamos un mensaje de prueba al canal.'); }
+    else if (!err) toast('Avisos a Slack desactivados');
+    else setError(err);
+    setOcupado(false);
+  };
+  return (
+    <section className="pt-6 mt-2 border-t border-border space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="eyebrow flex items-center gap-1.5"><Hash className="size-3.5" />Avisos a Slack</p>
+        <span className={cn('inline-flex items-center gap-1.5 text-[11px]', slackUrl ? 'text-ok-fg' : 'text-text-muted')}><span className={cn('size-1.5 rounded-full', slackUrl ? 'bg-ok' : 'bg-text-subtle')} />{slackUrl ? 'Conectado' : 'Sin conectar'}</span>
+      </div>
+      <p className="text-[12px] text-text-muted">Al canal llegan: cuando un cliente aprueba o pide cambios, cuando se asigna una tarea y cuando alguien termina una.</p>
+      <input id="slack-url" value={url} onChange={(e) => { setUrl(e.target.value); setError(null); }} placeholder="https://hooks.slack.com/services/…" spellCheck={false}
+        className="h-10 w-full rounded-lg bg-surface-raised px-3 text-[12px] font-mono outline-none focus:ring-2 focus:ring-[var(--accent-ring)]" />
+      {error && <div className="p-3 rounded-lg bg-err-bg text-err-fg text-[12px]">{error}</div>}
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={() => setAyuda(!ayuda)} className="text-[12px] text-text-muted hover:text-text-primary underline underline-offset-2">¿Cómo consigo el link?</button>
+        <div className="flex gap-2">
+          {slackUrl && <Btn size="sm" variant="ghost" disabled={ocupado} onClick={async () => { const e = await probarSlack(); e ? setError(e) : toast('Mensaje de prueba enviado'); }}>Probar</Btn>}
+          <Btn size="sm" disabled={ocupado || url.trim() === (slackUrl ?? '')} onClick={guardar}>{ocupado ? 'Guardando…' : 'Guardar'}</Btn>
+        </div>
+      </div>
+      <AnimatePresence initial={false}>
+        {ayuda && (
+          <motion.ol initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden list-decimal pl-5 space-y-1 text-[12px] text-text-secondary">
+            <li>Entrá a <span className="font-medium text-text-primary">api.slack.com/apps</span> → <span className="font-medium text-text-primary">Create New App</span> → From scratch. Nombre: "1607", tu workspace.</li>
+            <li>En el menú, <span className="font-medium text-text-primary">Incoming Webhooks</span> → activalo.</li>
+            <li><span className="font-medium text-text-primary">Add New Webhook to Workspace</span> → elegí el canal (por ejemplo #proyectos) → Permitir.</li>
+            <li>Copiá el link que empieza con https://hooks.slack.com, pegalo acá y tocá Guardar.</li>
+          </motion.ol>
+        )}
+      </AnimatePresence>
+    </section>
   );
 }

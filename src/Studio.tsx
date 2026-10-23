@@ -11,6 +11,7 @@ import { TareaPanel, CuentaSheet } from './Paneles';
 import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, type Proyecto, type Tarea } from './data';
 import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
+import { Campanita } from './Campanita';
 import Proyectos, { TareaRow } from './Proyectos';
 import Numeros from './Numeros';
 import { DatePicker } from './easyui/DatePicker';
@@ -47,6 +48,7 @@ export default function Studio({ yo }: { yo: string }) {
         <div className="px-2 mb-9 flex items-center gap-2.5">
           <Logo className="w-[58px]" />
           <span className="text-[11px] text-text-muted leading-tight">Estudio</span>
+          <Campanita className="ml-auto -mr-1" abrirProyecto={(id) => { setVista('proyectos'); setAbierto(id); }} />
         </div>
         <nav className="flex flex-col gap-0.5">
           {nav.map((n) => {
@@ -84,7 +86,8 @@ export default function Studio({ yo }: { yo: string }) {
       <header className="lg:hidden sticky z-30 gutter pt-3 pb-3 bg-[var(--bg)]/90 backdrop-blur-xl border-b border-border" style={{ top: 'env(safe-area-inset-top, 0px)' }}>
         <div className="flex items-center justify-between mb-3">
           <Logo className="w-[52px]" />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Campanita lado="derecha" abrirProyecto={(id) => { setVista('proyectos'); setAbierto(id); }} />
             <TemaSwitch />
             <button onClick={() => setCuenta(true)} className="flex items-center gap-2 text-[12px] text-text-muted" aria-label="Mi cuenta"><Avatar id={yo} size={26} /><span className="hidden sm:inline">Mi cuenta</span></button>
           </div>
