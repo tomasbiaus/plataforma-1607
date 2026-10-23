@@ -298,3 +298,14 @@ export const Fade = ({ k, children, className }: { k: string; children: React.Re
     </motion.div>
   </AnimatePresence>
 );
+
+/** Botón de dos toques para acciones que no se pueden deshacer (sin ventanas del navegador) */
+export function ConfirmBtn({ onConfirm, children, confirmText = '¿Seguro? Tocá de nuevo', className, size = 'sm' }: { onConfirm: () => void; children: React.ReactNode; confirmText?: string; className?: string; size?: 'sm' | 'md' }) {
+  const [armado, setArmado] = useState(false);
+  React.useEffect(() => { if (!armado) return; const t = setTimeout(() => setArmado(false), 3500); return () => clearTimeout(t); }, [armado]);
+  return (
+    <Btn size={size} variant={armado ? 'red' : 'ghost'} className={cn(!armado && 'hover:!text-rojo', className)} onClick={() => (armado ? (setArmado(false), onConfirm()) : setArmado(true))}>
+      {armado ? confirmText : children}
+    </Btn>
+  );
+}

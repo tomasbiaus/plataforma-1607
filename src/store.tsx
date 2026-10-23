@@ -43,6 +43,8 @@ type Store = {
   setEstadoTarea: (tid: string, e: EstadoTarea) => void;
   agregarTarea: (t: Omit<Tarea, 'id'>) => Promise<void>;
   actualizarTarea: (tid: string, patch: Partial<Tarea>, log?: string) => void;
+  archivarTareas: (ids: string[], archivar?: boolean) => Promise<void>;
+  borrarTareas: (ids: string[]) => Promise<void>;
   avanzarEtapa: (pid: string, dir: 1 | -1) => Promise<void>;
   tareaAbierta: string | null;
   abrirTarea: (id: string | null) => void;
@@ -82,7 +84,14 @@ export const useStore = () => useContext(Ctx);
 export const useTareas = () => {
   const { tareas, sesion } = useStore();
   const yo = sesion?.tipo === 'estudio' ? sesion.persona : null;
-  return tareas.filter((t) => !t.privada || esAdmin(yo));
+  return tareas.filter((t) => !t.archivada && (!t.privada || esAdmin(yo)));
+};
+
+/** Tareas archivadas (el Archivo) */
+export const useArchivo = () => {
+  const { tareas, sesion } = useStore();
+  const yo = sesion?.tipo === 'estudio' ? sesion.persona : null;
+  return tareas.filter((t) => t.archivada && (!t.privada || esAdmin(yo)));
 };
 
 const COLORES = ['#B5651D', '#2F7F7A', '#7A4FA0', '#B04A5A', '#5B7C2E', '#3C6E9E'];
@@ -203,7 +212,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         id: t.id, cliente: clavePorId[t.cliente_id] ?? '', proyecto: t.proyecto_id ?? undefined, titulo: t.titulo,
         quien: (resp.data ?? []).filter((x: any) => x.tarea_id === t.id).map((x: any) => x.profile_id),
         estado: t.estado, prioridad: t.prioridad, inicio: t.inicio, fin: t.fin, equipo: t.equipo ?? [], etapa: t.etapa ?? undefined,
-        privada: t.privada, plantilla: t.plantilla, notion: t.notion, notas: t.notas ?? '', checklist: t.checklist ?? [], links: t.links ?? [],
+        privada: t.privada, archivada: !!t.archivada, plantilla: t.plantilla, notion: t.notion, notas: t.notas ?? '', checklist: t.checklist ?? [], links: t.links ?? [],
         historial: (hist.data ?? []).filter((h: any) => h.tarea_id === t.id).map((h: any) => ({ quien: quienDe(h.tipo, h.quien), texto: h.texto, cuando: hace(h.creado) })),
       })));
       setSesion((s) => (s?.tipo === 'estudio' ? s : { tipo: 'estudio', persona: yo.id }));
@@ -330,6 +339,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (t.quien.length) await supabase.from('tarea_responsables').insert(t.quien.map((q) => ({ tarea_id: data.id, profile_id: q })));
       await supabase.from('tarea_historial').insert({ tarea_id: data.id, quien: (sesion as any)?.persona, texto: 'creó la tarea' });
       await recargar();
+    },
+    archivarTareas: async (ids, archivar = true) => {
+      if (!ids.length) return;
+      setTareas((ts) => ts.map((x) => (ids.includes(x.id) ? { ...x, archivada: archivar } : x)));
+      if (archivar && ids.includes(tareaAbierta ?? '')) abrirTarea(null);
+      const { error } = await supabase.from('tareas').update({ archivada: archivar }).in('id', ids);
+      if (error) { fallo(error); await recargar(); return; }
+      const yo = (sesion as any)?.persona;
+      await supabase.from('tarea_historial').insert(ids.map((id) => ({ tarea_id: id, quien: yo, texto: archivar ? 'la mandó al archivo' : 'la sacó del archivo' })));
+    },
+    borrarTareas: async (ids) => {
+      if (!ids.length) return;
+      setTareas((ts) => ts.filter((x) => !ids.includes(x.id)));
+      if (ids.includes(tareaAbierta ?? '')) abrirTarea(null);
+      const { error } = await supabase.from('tareas').delete().in('id', ids);
+      if (error) { fallo(error); await recargar(); }
     },
     actualizarTarea: (tid, patch, log) => {
       setTareas((ts) => ts.map((x) => (x.id === tid ? { ...x, ...patch, historial: log ? [...(x.historial ?? []), { quien: (sesion as any)?.persona, texto: log, cuando: 'Recién' }] : x.historial } : x)));

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X, Archive } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Avatar, AvatarStack, PillNav, Btn, Card, Fade, useToast } from './ui';
-import { useStore, useTareas } from './store';
-import { NuevoProyectoSheet, AutomatizacionesSheet } from './Paneles';
+import { useStore, useTareas, useArchivo } from './store';
+import { NuevoProyectoSheet, AutomatizacionesSheet, ArchivoSheet } from './Paneles';
 import { GooeyMenu } from './easyui/GooeyMenu';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
 
@@ -227,8 +227,12 @@ function FiltroResponsables({ value, onChange, etapas }: { value: string[]; onCh
 /* ── Tabla (vista "All Projects" de Notion) ── */
 function Tabla({ quien, nueva, setNueva }: { quien: string[]; nueva: boolean; setNueva: (b: boolean) => void }) {
   const tareas = useTareas();
-  const { abrirTarea } = useStore();
+  const { abrirTarea, archivarTareas } = useStore();
+  const toast = useToast();
+  const archivo = useArchivo();
+  const [verArchivo, setArchivo] = useState(false);
   const [verHechas, setVerHechas] = useState(true);
+  const hechas = filtrar(tareas, quien).filter((t) => t.estado === 'hecha');
   const lista = useMemo(
     () =>
       filtrar(tareas, quien)
@@ -267,8 +271,19 @@ function Tabla({ quien, nueva, setNueva }: { quien: string[]; nueva: boolean; se
         </table>
       </Card>
       <div className="flex flex-wrap items-center justify-between gap-3 text-[12px] text-text-muted">
-        <label className="flex items-center gap-2 cursor-pointer"><Check on={verHechas} onClick={() => setVerHechas(!verHechas)} label="Mostrar hechas" /> Mostrar hechas</label>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="flex items-center gap-2 cursor-pointer"><Check on={verHechas} onClick={() => setVerHechas(!verHechas)} label="Mostrar hechas" /> Mostrar hechas</label>
+          {hechas.length > 0 && (
+            <button onClick={() => { archivarTareas(hechas.map((t) => t.id)); toast(`${hechas.length === 1 ? 'Archivaste 1 tarea hecha' : `Archivaste ${hechas.length} tareas hechas`}. Están en Archivo.`); }} className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full bg-surface-raised text-text-secondary hover:text-text-primary font-medium">
+              <Archive className="size-3.5" />Archivar hechas <span className="tnum text-text-muted">{hechas.length}</span>
+            </button>
+          )}
+          <button onClick={() => setArchivo(true)} className="inline-flex items-center gap-1.5 h-7 px-2 rounded-full hover:text-text-primary">
+            Ver archivo <span className="tnum">{archivo.length}</span>
+          </button>
+        </div>
         <span>Tocá una fila para abrir la tarea; tocá el estado para elegir otro.</span>
+        <ArchivoSheet open={verArchivo} onClose={() => setArchivo(false)} />
       </div>
     </div>
   );

@@ -52,6 +52,7 @@ export type Tarea = {
   notion?: boolean;
   etapa?: string;
   privada?: boolean; // solo la ve el admin
+  archivada?: boolean; // terminada y guardada en el Archivo
   plantilla?: boolean;
   notas?: string;
   checklist?: { id: string; texto: string; hecha: boolean }[];

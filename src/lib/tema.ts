@@ -10,7 +10,7 @@ export const leerTema = (): Tema => {
     const t = localStorage.getItem(KEY);
     if (t === 'claro' || t === 'oscuro' || t === 'sistema') return t;
   } catch {}
-  return 'sistema';
+  return 'claro';
 };
 
 export const resolverTema = (t: Tema): 'claro' | 'oscuro' => (t === 'sistema' ? (media().matches ? 'oscuro' : 'claro') : t);

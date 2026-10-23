@@ -9,8 +9,8 @@
     <script>
       /* Aplica el tema antes de pintar, para que no parpadee */
       (function () {
-        var t = 'sistema';
-        try { t = localStorage.getItem('1607-tema') || 'sistema'; } catch (e) {}
+        var t = 'claro';
+        try { t = localStorage.getItem('1607-tema') || 'claro'; } catch (e) {}
         var dark = t === 'oscuro' || (t === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.dataset.theme = dark ? 'dark' : 'light';
         if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121211');

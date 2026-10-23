@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut } from 'lucide-react';
+import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut, Archive, ArchiveRestore } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
-import { Avatar, Btn, TemaSwitch, useToast } from './ui';
-import { useStore, type NuevoProyecto } from './store';
+import { Avatar, Btn, TemaSwitch, useToast, ConfirmBtn } from './ui';
+import { useStore, useArchivo, type NuevoProyecto } from './store';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
@@ -22,7 +22,8 @@ const Prop = ({ label, children }: { label: string; children: React.ReactNode })
 
 /* ───────── 1. La tarea como página ───────── */
 export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => void }) {
-  const { tareas, tareaAbierta, abrirTarea, actualizarTarea, proyectos } = useStore();
+  const { tareas, tareaAbierta, abrirTarea, actualizarTarea, proyectos, archivarTareas, borrarTareas } = useStore();
+  const toast = useToast();
   const t = tareas.find((x) => x.id === tareaAbierta);
   const [nuevoItem, setNuevoItem] = useState('');
   const [link, setLink] = useState({ titulo: '', url: '' });
@@ -163,7 +164,59 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                 </ol>
               </section>
             </SheetBody>
+            <SheetFooter className="justify-between">
+              {t.archivada ? (
+                <Btn size="sm" variant="secondary" onClick={() => { archivarTareas([t.id], false); toast('Volvió a la lista de tareas'); }}><ArchiveRestore className="size-3.5" />Sacar del archivo</Btn>
+              ) : (
+                <Btn size="sm" variant={t.estado === 'hecha' ? 'primary' : 'secondary'} onClick={() => { archivarTareas([t.id]); toast('Tarea archivada. La encontrás en Archivo.'); }}><Archive className="size-3.5" />Archivar</Btn>
+              )}
+              <ConfirmBtn onConfirm={() => { borrarTareas([t.id]); toast('Tarea borrada'); }} confirmText="¿Borrar para siempre?"><Trash2 className="size-3.5" />Borrar</ConfirmBtn>
+            </SheetFooter>
           </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/* Archivo: tareas terminadas guardadas fuera de las vistas */
+export function ArchivoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { archivarTareas, borrarTareas } = useStore();
+  const archivo = useArchivo();
+  const toast = useToast();
+  const lista = [...archivo].sort((a, b) => (b.fin ?? b.inicio ?? '').localeCompare(a.fin ?? a.inicio ?? ''));
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="max-w-[32rem]">
+        <SheetHeader className="pt-6">
+          <SheetTitle className="text-[22px] font-bold tracking-[-0.03em] flex items-center gap-2"><Archive className="size-5" />Archivo</SheetTitle>
+          <SheetDescription className="text-[13px] text-text-muted">Tareas terminadas que sacaste de las vistas. No se pierde nada: podés devolverlas o borrarlas para siempre.</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="pb-6">
+          {!lista.length ? (
+            <div className="py-16 text-center text-[13px] text-text-muted">El archivo está vacío.</div>
+          ) : (
+            <ul className="divide-y divide-border-subtle -mx-1">
+              <AnimatePresence initial={false}>
+                {lista.map((t) => (
+                  <motion.li key={t.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }} className="flex items-center gap-3 py-3 px-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] truncate">{t.titulo}</p>
+                      <p className="text-[11px] text-text-muted truncate">{CLIENTES[t.cliente]?.nombre ?? 'Sin cliente'}{t.inicio ? ' · ' + fecha(t.inicio) : ''}</p>
+                    </div>
+                    <button onClick={() => { archivarTareas([t.id], false); toast('Volvió a la lista de tareas'); }} title="Sacar del archivo" aria-label={'Sacar del archivo: ' + t.titulo} className="grid place-items-center size-8 rounded-full text-text-muted hover:text-text-primary hover:bg-surface-raised"><ArchiveRestore className="size-4" /></button>
+                    <ConfirmBtn onConfirm={() => borrarTareas([t.id])} confirmText="¿Borrar?" className="!px-2.5"><Trash2 className="size-3.5" /></ConfirmBtn>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+        </SheetBody>
+        {lista.length > 1 && (
+          <SheetFooter className="justify-between">
+            <span className="text-[12px] text-text-muted">{lista.length} tareas archivadas</span>
+            <ConfirmBtn onConfirm={() => { borrarTareas(lista.map((t) => t.id)); toast('Archivo vaciado'); }} confirmText={`¿Borrar las ${lista.length}?`}><Trash2 className="size-3.5" />Vaciar archivo</ConfirmBtn>
+          </SheetFooter>
         )}
       </SheetContent>
     </Sheet>
