@@ -32,7 +32,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (destino.rol === 'admin') return res.status(400).json({ error: 'Tu propia contraseña cambiala desde Mi cuenta' });
 
   const password = nueva();
-  const { error } = await admin.auth.admin.updateUserById(destino.id, { password });
+  // también confirma el mail, por si la cuenta se creó sin confirmar (si no, no puede entrar)
+  const { error } = await admin.auth.admin.updateUserById(destino.id, { password, email_confirm: true });
   if (error) return res.status(500).json({ error: error.message });
   // al entrar con esta, la plataforma le pide que elija la suya
   await admin.from('profiles').update({ debe_cambiar_clave: true }).eq('id', destino.id);
