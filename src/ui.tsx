@@ -294,13 +294,29 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const Fade = ({ k, children, className }: { k: string; children: React.ReactNode; className?: string }) => (
-  <AnimatePresence mode="wait">
-    <motion.div key={k} className={className} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={motionTransitions.springGentle}>
-      {children}
-    </motion.div>
-  </AnimatePresence>
-);
+/** true mientras la pestaña está en segundo plano (ahí el navegador frena las animaciones) */
+export function useOculto() {
+  const [oculto, setOculto] = useState(() => typeof document !== 'undefined' && document.visibilityState === 'hidden');
+  React.useEffect(() => {
+    const f = () => setOculto(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', f);
+    return () => document.removeEventListener('visibilitychange', f);
+  }, []);
+  return oculto;
+}
+
+export const Fade = ({ k, children, className }: { k: string; children: React.ReactNode; className?: string }) => {
+  // en segundo plano se cambia de sección al instante: si no, la animación de salida queda trabada
+  // (mismo árbol siempre, para no perder lo que estaba abierto al volver a la pestaña)
+  const oculto = useOculto();
+  return (
+    <AnimatePresence mode={oculto ? 'sync' : 'wait'}>
+      <motion.div key={k} className={className} initial={oculto ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={oculto ? undefined : { opacity: 0, y: -6 }} transition={motionTransitions.springGentle}>
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 /** Botón de dos toques para acciones que no se pueden deshacer (sin ventanas del navegador) */
 export function ConfirmBtn({ onConfirm, children, confirmText = '¿Seguro? Tocá de nuevo', className, size = 'sm' }: { onConfirm: () => void; children: React.ReactNode; confirmText?: string; className?: string; size?: 'sm' | 'md' }) {

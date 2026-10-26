@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { StoreProvider, useStore } from './store';
-import { ToastProvider, useToast } from './ui';
+import { ToastProvider, useToast, useOculto } from './ui';
 import { useEffect, useRef } from 'react';
 import Login, { NuevaClave } from './Login';
 import Studio from './Studio';
@@ -28,6 +28,7 @@ function Cargando() {
 
 function Router() {
   const { sesion, listo, error, salir, recuperando, debeCambiarClave } = useStore();
+  const oculto = useOculto();
   if (recuperando) return <NuevaClave />;
   if (listo && sesion && debeCambiarClave) return <NuevaClave primeraVez />;
   if (!listo) return <Cargando />;
@@ -43,8 +44,8 @@ function Router() {
   }
   const key = !sesion ? 'login' : sesion.tipo === 'estudio' ? 'e-' + sesion.persona : 'c-' + sesion.proyecto;
   return (
-    <AnimatePresence mode="wait">
-      <motion.div key={key} className="min-h-full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+    <AnimatePresence mode={oculto ? 'sync' : 'wait'}>
+      <motion.div key={key} className="min-h-full" initial={oculto ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={oculto ? undefined : { opacity: 0 }} transition={{ duration: 0.25 }}>
         {!sesion ? <Login /> : sesion.tipo === 'estudio' ? <Studio yo={sesion.persona} /> : <ClientPortal proyectoId={sesion.proyecto} />}
       </motion.div>
     </AnimatePresence>
