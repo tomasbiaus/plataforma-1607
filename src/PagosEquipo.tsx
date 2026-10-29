@@ -4,7 +4,7 @@ import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Avatar, Btn, Card, useToast } from './ui';
 import { useStore } from './store';
-import { EQUIPO, persona, usd, fecha, HOY } from './data';
+import { EQUIPO, persona, usd, fecha, HOY, terminado } from './data';
 
 /* Pagos al equipo por proyecto de branding (aparte del sueldo). Cada branding lo hace una sola persona. */
 export default function PagosEquipo() {
@@ -89,7 +89,7 @@ export default function PagosEquipo() {
           <tbody className="divide-y divide-border border-t border-border">
             {filas.map((x) => (
               <tr key={x.proyecto} className="hover:bg-surface-hover">
-                <td className="px-4 py-3"><span className="font-medium">{x.p.cliente}</span><span className="block text-[11px] text-text-muted">{x.p.etapa >= 6 ? 'Terminado' : 'En curso'}</span></td>
+                <td className="px-4 py-3"><span className="font-medium">{x.p.cliente}</span><span className="block text-[11px] text-text-muted">{terminado(x.p) ? 'Terminado' : 'En curso'}</span></td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     {EQUIPO.filter((m) => !m.esAdmin).map((m) => (

@@ -9,7 +9,7 @@ import { UnfoldAccordion } from './easyui/UnfoldAccordion';
 import { Logo, TemaSwitch, Avatar, EstadoBadge, PillNav, Btn, Card, Preview, Fade, useToast } from './ui';
 import { useStore } from './store';
 import { CuentaSheet } from './Paneles';
-import { ETAPAS, ETAPA_DESC, persona, usd, type Proyecto, type Entrega } from './data';
+import { ETAPAS, ETAPA_DESC, terminado, persona, usd, type Proyecto, type Entrega } from './data';
 
 type Tab = 'proyecto' | 'entregables' | 'pagos';
 
@@ -69,8 +69,8 @@ export default function ClientPortal({ proyectoId, preview = false, onSalirPrevi
 }
 
 function Inicio({ p, porRevisar, irA }: { p: Proyecto; porRevisar: Entrega[]; irA: (t: Tab) => void }) {
-  const terminado = p.etapa >= 6;
-  const etapa = terminado ? 'Entregado' : ETAPAS[p.etapa];
+  const fin = terminado(p);
+  const etapa = fin ? 'Entregado' : p.etapas[p.etapa];
   return (
     <div className="space-y-12">
       <section>
@@ -82,7 +82,7 @@ function Inicio({ p, porRevisar, irA }: { p: Proyecto; porRevisar: Entrega[]; ir
             <div className="flex items-baseline gap-3 mt-2 flex-wrap">
               <span className="text-[clamp(30px,4vw,44px)] font-bold tracking-[-0.035em] leading-none">{etapa}</span>
             </div>
-            <div className="mt-7"><Stepper orientation="vertical" steps={ETAPAS.map((e) => ({ title: e, description: ETAPA_DESC[e] }))} current={p.etapa} /></div>
+            <div className="mt-7"><Stepper orientation="vertical" steps={p.etapas.map((e) => ({ title: e, description: ETAPA_DESC[e] ?? '' }))} current={p.etapa} /></div>
           </Card>
           <Card className="p-5 sm:p-7 flex flex-col gap-5">
             <div>
@@ -121,7 +121,7 @@ function Inicio({ p, porRevisar, irA }: { p: Proyecto; porRevisar: Entrega[]; ir
           </div>
         ) : (
           <Card className="p-6 flex flex-wrap items-center justify-between gap-4">
-            <p className="text-text-secondary max-w-[52ch]">No hay nada esperando tu respuesta. Te avisamos por mail cuando subamos la próxima entrega.</p>
+            <p className="text-text-secondary max-w-[52ch]">No hay nada esperando tu respuesta. Apenas subamos la próxima entrega la vas a ver acá.</p>
             <Btn variant="secondary" size="sm" onClick={() => irA('entregables')}>Ver entregables</Btn>
           </Card>
         )}
@@ -130,10 +130,10 @@ function Inicio({ p, porRevisar, irA }: { p: Proyecto; porRevisar: Entrega[]; ir
   );
 }
 
-function EtapasTrack({ etapa }: { etapa: number }) {
+function EtapasTrack({ etapa, etapas = [...ETAPAS] }: { etapa: number; etapas?: string[] }) {
   return (
-    <ol className="mt-8 md:mt-auto md:pt-8 grid grid-cols-6 gap-1.5" aria-label="Etapas del proyecto">
-      {ETAPAS.map((e, i) => {
+    <ol className="mt-8 md:mt-auto md:pt-8 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${etapas.length}, minmax(0,1fr))` }} aria-label="Etapas del proyecto">
+      {etapas.map((e, i) => {
         const estado = i < etapa ? 'hecha' : i === etapa ? 'actual' : 'proxima';
         return (
           <li key={e} aria-current={estado === 'actual' ? 'step' : undefined} className="min-w-0">
@@ -215,7 +215,7 @@ function Revision({ p, e }: { p: Proyecto; e: Entrega }) {
 function Entregables({ p, visibles }: { p: Proyecto; visibles: Entrega[] }) {
   const toast = useToast();
   const { urlArchivo } = useStore();
-  const etapas = ETAPAS.filter((et) => visibles.some((e) => e.etapa === et));
+  const etapas = [...p.etapas, ...visibles.map((e) => e.etapa).filter((x) => !p.etapas.includes(x))].filter((et, i, a) => a.indexOf(et) === i && visibles.some((e) => e.etapa === et));
   if (!visibles.length) return <p className="text-text-muted">Todavía no hay entregas. Vas a verlas acá apenas las enviemos.</p>;
   return (
     <div className="space-y-10">

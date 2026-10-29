@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import {
-  CLIENTES, EQUIPO, ETAPAS, HOY, fecha, hace, esAdmin, adminId, slug,
+  CLIENTES, EQUIPO, ETAPAS, terminado, HOY, fecha, hace, esAdmin, adminId, slug,
   type Proyecto, type Tarea, type EstadoEntrega, type EstadoTarea, type Pago, type CobroExtra, type PagoEquipo, type Entrega, aEmail } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 
@@ -51,6 +51,7 @@ type Store = {
   archivarTareas: (ids: string[], archivar?: boolean) => Promise<void>;
   borrarTareas: (ids: string[]) => Promise<void>;
   avanzarEtapa: (pid: string, dir: 1 | -1) => Promise<void>;
+  cambiarEtapas: (pid: string, etapas: string[], actual: number) => Promise<string | null>;
   tareaAbierta: string | null;
   abrirTarea: (id: string | null) => void;
   crearProyecto: (n: NuevoProyecto) => Promise<string>;
@@ -199,7 +200,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
       return {
         id: r.id, clave: r.clave, clienteId: r.cliente_id, cliente: cl?.nombre ?? '', rubro: r.rubro, nombre: r.nombre, servicio: r.servicio, plan: r.plan, total: 0,
-        etapa: r.etapa, inicio: fecha(r.inicio), inicioISO: r.inicio, entregaFinal: fecha(r.entrega_final), entregaFinalISO: r.entrega_final,
+        etapa: r.etapa, etapas: r.etapas?.length ? r.etapas : [...ETAPAS], inicio: fecha(r.inicio), inicioISO: r.inicio, entregaFinal: fecha(r.entrega_final), entregaFinalISO: r.entrega_final,
         proximoHito: { titulo: r.hito_titulo, fecha: fecha(r.hito_fecha, true), iso: r.hito_fecha },
         equipo: (peq.data ?? []).filter((x: any) => x.proyecto_id === r.id).map((x: any) => x.profile_id),
         ronda: r.ronda_total ? { actual: r.ronda_actual ?? 1, total: r.ronda_total } : undefined,
@@ -247,7 +248,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (est?.abierto) await cargarNumeros();
       }
     } else if (yo?.rol === 'cliente') {
-      const propio = lista.filter((p) => p.clienteId === yo.cliente_id).sort((a, b) => (a.etapa >= 6 ? 1 : 0) - (b.etapa >= 6 ? 1 : 0))[0];
+      const propio = lista.filter((p) => p.clienteId === yo.cliente_id).sort((a, b) => (terminado(a) ? 1 : 0) - (terminado(b) ? 1 : 0))[0];
       if (propio) setSesion({ tipo: 'cliente', proyecto: propio.id });
       else setError('Tu cuenta todavía no tiene un proyecto asignado. Escribinos a hola@1607studio.com.');
     }
@@ -449,6 +450,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         })().catch(fallo);
       }
       if (log) supabase.from('tarea_historial').insert({ tarea_id: tid, quien: (sesion as any)?.persona, texto: log }).then(({ error }) => error && fallo(error));
+    },
+    cambiarEtapas: async (pid, etapas, actual) => {
+      const { error } = await supabase.rpc('cambiar_etapas', { p: pid, nuevas: etapas, etapa_actual: actual });
+      if (error) return error.message;
+      await recargar();
+      return null;
     },
     avanzarEtapa: async (pid, dir) => {
       const p = proyectos.find((x) => x.id === pid);

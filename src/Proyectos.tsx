@@ -7,7 +7,7 @@ import { Avatar, AvatarStack, PillNav, Btn, Card, Fade, useToast } from './ui';
 import { useStore, useTareas, useArchivo } from './store';
 import { NuevoProyectoSheet, AutomatizacionesSheet, ArchivoSheet } from './Paneles';
 import { GooeyMenu } from './easyui/GooeyMenu';
-import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
+import { CLIENTES, EQUIPO, ETAPAS, terminado, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
 import { DatePicker } from './easyui/DatePicker';
 
 /* ───────── piezas compartidas ───────── */
@@ -106,9 +106,9 @@ function useEventos(): Evento[] {
         if (d && e.estado !== 'interno') ev.push({ id: e.id, dia: d, titulo: e.titulo, cliente: clienteDe(p), tipo: 'entrega', proyecto: p.id, hecho: e.estado === 'aprobado' });
       });
       const hito = p.proximoHito.iso ?? null;
-      if (hito && p.etapa < 6) ev.push({ id: p.id + '-hito', dia: hito, titulo: p.proximoHito.titulo, cliente: clienteDe(p), tipo: 'entrega', proyecto: p.id, hecho: false });
+      if (hito && !terminado(p)) ev.push({ id: p.id + '-hito', dia: hito, titulo: p.proximoHito.titulo, cliente: clienteDe(p), tipo: 'entrega', proyecto: p.id, hecho: false });
       const fin = p.entregaFinalISO ?? null;
-      if (fin) ev.push({ id: p.id + '-final', dia: fin, titulo: 'Entrega final', cliente: clienteDe(p), tipo: 'final', proyecto: p.id, hecho: p.etapa >= 6 });
+      if (fin) ev.push({ id: p.id + '-final', dia: fin, titulo: 'Entrega final', cliente: clienteDe(p), tipo: 'final', proyecto: p.id, hecho: terminado(p) });
     });
     tareas.forEach((t) => {
       const d = vence(t);

@@ -9,7 +9,7 @@ import { Logo, TemaSwitch, Avatar, AvatarStack, EstadoBadge, PillNav, Btn, Card,
 import { useStore, useTareas } from './store';
 import { TareaPanel, CuentaSheet } from './Paneles';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody } from './easyui/sheet';
-import { ETAPAS, ETAPA_DESC, EQUIPO, persona, esAdmin, fechaLarga, aEmail, usuarioDe, usuarioValido, type Proyecto, type Tarea } from './data';
+import { ETAPAS, ETAPA_DESC, terminado, etapaNombre, EQUIPO, persona, esAdmin, fechaLarga, aEmail, usuarioDe, usuarioValido, type Proyecto, type Tarea } from './data';
 import { supabase } from './lib/supabase';
 import ClientPortal from './ClientPortal';
 import { Campanita } from './Campanita';
@@ -24,7 +24,6 @@ const NAV: { id: Vista; label: string; icon: React.ElementType }[] = [
   { id: 'clientes', label: 'Clientes', icon: Users },
 ];
 
-const etapaNombre = (i: number) => (i >= 6 ? 'Terminado' : ETAPAS[i]);
 
 export default function Studio({ yo }: { yo: string }) {
   const { salir, proyectos } = useStore();
@@ -121,7 +120,7 @@ export default function Studio({ yo }: { yo: string }) {
 function Resumen({ yo, abrir }: { yo: string; abrir: (id: string) => void }) {
   const { proyectos } = useStore();
   const tareas = useTareas();
-  const activos = proyectos.filter((p) => p.etapa < 6);
+  const activos = proyectos.filter((p) => !terminado(p));
   const esperan = proyectos.flatMap((p) => p.entregas.filter((e) => e.estado === 'enviado').map((e) => ({ p, e })));
   const cambios = proyectos.flatMap((p) => p.entregas.filter((e) => e.estado === 'cambios').map((e) => ({ p, e })));
   const pendientes = tareas.filter((t) => t.estado !== 'hecha');
@@ -189,11 +188,11 @@ function Resumen({ yo, abrir }: { yo: string; abrir: (id: string) => void }) {
                   </span>
                 </div>
                 <div className="hidden sm:block min-w-0">
-                  <EtapaBar etapa={p.etapa} />
-                  <span className="flex justify-between gap-2 text-[11px] mt-1.5"><span className="font-medium">{etapaNombre(p.etapa)}</span><span className="text-text-muted truncate">{p.proximoHito.fecha}</span></span>
+                  <EtapaBar etapa={p.etapa} total={p.etapas.length} />
+                  <span className="flex justify-between gap-2 text-[11px] mt-1.5"><span className="font-medium">{etapaNombre(p)}</span><span className="text-text-muted truncate">{p.proximoHito.fecha}</span></span>
                 </div>
                 <AvatarStack ids={p.equipo} size={24} />
-                <div className="sm:hidden col-span-2"><EtapaBar etapa={p.etapa} /><span className="text-[11px] mt-1 block">{etapaNombre(p.etapa)} · {p.proximoHito.fecha}</span></div>
+                <div className="sm:hidden col-span-2"><EtapaBar etapa={p.etapa} total={p.etapas.length} /><span className="text-[11px] mt-1 block">{etapaNombre(p)} · {p.proximoHito.fecha}</span></div>
               </button>
             ))}
           </Card>
@@ -239,18 +238,23 @@ function Feed({ items }: { items: { quien: string; texto: string; cuando: string
 function Tablero({ abrir, quien = [] }: { abrir: (id: string) => void; quien?: string[] }) {
   const { proyectos: todos } = useStore();
   const proyectos = quien.length ? todos.filter((p) => p.equipo.some((q) => quien.includes(q))) : todos;
-  const cols = [...ETAPAS.map((e, i) => ({ i, e })), { i: 6, e: 'Terminado' }];
+  // columnas por nombre de etapa: las propias de cada proyecto (ej. Naming) se suman a las de siempre
+  const nombres: string[] = [];
+  const sumar = (lista: string[]) => lista.forEach((e, i) => { if (!nombres.includes(e)) { const sig = lista.slice(i + 1).find((x) => nombres.includes(x)); sig ? nombres.splice(nombres.indexOf(sig), 0, e) : nombres.push(e); } });
+  sumar([...ETAPAS]);
+  todos.forEach((p) => sumar(p.etapas));
+  const cols = [...nombres.map((e) => ({ e, fin: false })), { e: 'Terminado', fin: true }];
   return (
     <div>
       <p className="text-[13px] text-text-muted mb-4">Los proyectos con portal de cliente, ordenados por etapa. Tocá uno para ver entregables y tareas.</p>
       <div className="scroll-x -mx-4 px-4 lg:mx-0 lg:px-0 pb-3">
         <div className="grid grid-flow-col auto-cols-[220px] gap-3">
           {cols.map((c) => {
-            const ps = proyectos.filter((p) => p.etapa === c.i);
+            const ps = proyectos.filter((p) => (c.fin ? terminado(p) : !terminado(p) && p.etapas[p.etapa] === c.e));
             return (
               <div key={c.e} className="rounded-2xl bg-column p-2 min-h-[260px]">
                 <div className="flex items-center justify-between px-2 pt-1.5 pb-3">
-                  <span className="text-[12px] font-medium flex items-center gap-2">{ps.length > 0 && c.i < 6 && <span className="size-1.5 rounded-full bg-rojo" />}{c.e}</span>
+                  <span className="text-[12px] font-medium flex items-center gap-2">{ps.length > 0 && !c.fin && <span className="size-1.5 rounded-full bg-rojo" />}{c.e}</span>
                   <span className="text-[11px] text-text-muted tnum">{ps.length}</span>
                 </div>
                 <div className="space-y-2">
@@ -260,7 +264,7 @@ function Tablero({ abrir, quien = [] }: { abrir: (id: string) => void; quien?: s
                       <span className="block font-medium text-[13px]">{p.cliente}</span>
                       <span className="block text-[11px] text-text-muted">{p.servicio}</span>
                       <span className="flex items-center justify-between mt-3">
-                        <span className="text-[11px] text-text-secondary">{p.etapa < 6 ? p.proximoHito.fecha : 'Entregado ' + p.entregaFinal}</span>
+                        <span className="text-[11px] text-text-secondary">{!terminado(p) ? p.proximoHito.fecha : 'Entregado ' + p.entregaFinal}</span>
                         <AvatarStack ids={p.equipo} size={20} />
                       </span>
                     </motion.button>
@@ -283,6 +287,7 @@ function DetalleProyecto({ p, admin, onVolver, onComoCliente }: { p: Proyecto; a
   const tareas = useTareas();
   const [tab, setTab] = useState<Tab>('entregables');
   const [editar, setEditar] = useState(false);
+  const [editarEtapas, setEditarEtapas] = useState(false);
   const toast = useToast();
   const ts = tareas.filter((t) => t.proyecto === p.id);
 
@@ -305,19 +310,29 @@ function DetalleProyecto({ p, admin, onVolver, onComoCliente }: { p: Proyecto; a
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <p className="eyebrow">Etapa actual</p>
-            <p className="text-[20px] font-bold tracking-[-0.02em] mt-1">{etapaNombre(p.etapa)} <span className="font-normal text-text-muted text-[14px]">{p.etapa < 6 ? '· ' + ETAPA_DESC[ETAPAS[p.etapa]] : ''}</span></p>
+            <p className="text-[20px] font-bold tracking-[-0.02em] mt-1">{etapaNombre(p)} <span className="font-normal text-text-muted text-[14px]">{!terminado(p) && ETAPA_DESC[p.etapas[p.etapa]] ? '· ' + ETAPA_DESC[p.etapas[p.etapa]] : ''}</span></p>
           </div>
           <div className="flex gap-2">
             <Btn variant="ghost" size="sm" disabled={p.etapa === 0} onClick={() => avanzarEtapa(p.id, -1)}>Volver</Btn>
-            <Btn size="sm" disabled={p.etapa >= 6} onClick={() => { avanzarEtapa(p.id, 1); toast(p.etapa + 1 >= 6 ? `${p.cliente}: proyecto terminado` : `${p.cliente} pasó a ${ETAPAS[p.etapa + 1]}. El cliente ya lo ve.`); }}>
-              {p.etapa >= 5 ? 'Cerrar proyecto' : `Pasar a ${ETAPAS[Math.min(p.etapa + 1, 5)]}`} <ArrowRight className="size-3.5" />
+            <Btn size="sm" disabled={terminado(p)} onClick={() => { avanzarEtapa(p.id, 1); toast(p.etapa + 1 >= p.etapas.length ? `${p.cliente}: proyecto terminado` : `${p.cliente} pasó a ${p.etapas[p.etapa + 1]}. El cliente ya lo ve.`); }}>
+              {p.etapa >= p.etapas.length - 1 ? 'Cerrar proyecto' : `Pasar a ${p.etapas[p.etapa + 1]}`} <ArrowRight className="size-3.5" />
             </Btn>
           </div>
         </div>
-        <Stepper steps={ETAPAS.map((e) => ({ title: e }))} current={p.etapa} />
+        <Stepper steps={p.etapas.map((e) => ({ title: e }))} current={p.etapa} />
+        <AnimatePresence initial={false}>
+          {editarEtapas && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <EditorEtapas p={p} onListo={() => setEditarEtapas(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
           <p className="text-[12px] text-text-muted flex items-center gap-2"><span className="size-1.5 rounded-full bg-rojo" />Próximo hito: <span className="text-text-primary">{p.proximoHito.titulo || '—'}</span> · {p.proximoHito.fecha}</p>
-          <button onClick={() => setEditar(!editar)} className="text-[12px] text-text-muted hover:text-text-primary underline underline-offset-2">{editar ? 'Cerrar' : 'Editar fechas e hito'}</button>
+          <span className="flex items-center gap-4">
+            <button onClick={() => { setEditarEtapas(!editarEtapas); setEditar(false); }} className="text-[12px] text-text-muted hover:text-text-primary underline underline-offset-2">{editarEtapas ? 'Cerrar' : 'Editar etapas'}</button>
+            <button onClick={() => { setEditar(!editar); setEditarEtapas(false); }} className="text-[12px] text-text-muted hover:text-text-primary underline underline-offset-2">{editar ? 'Cerrar' : 'Editar fechas e hito'}</button>
+          </span>
         </div>
         <AnimatePresence initial={false}>
           {editar && (
@@ -335,6 +350,67 @@ function DetalleProyecto({ p, admin, onVolver, onComoCliente }: { p: Proyecto; a
         {tab === 'tareas' && <TareasProyecto p={p} ts={ts} />}
         {tab === 'actividad' && <Card className="p-5"><Feed items={[...p.actividad].reverse()} /></Card>}
       </Fade>
+    </div>
+  );
+}
+
+/* Etapas propias del proyecto (ej. Naming → Diseño) */
+const PLANTILLAS_ETAPAS: { nombre: string; etapas: string[] }[] = [
+  { nombre: 'Las 6 de siempre', etapas: [...ETAPAS] },
+  { nombre: 'Naming + Diseño', etapas: ['Naming', 'Diseño'] },
+  { nombre: 'Naming + branding completo', etapas: ['Naming', 'Concepto', 'Diseño', 'Revisiones', 'Entrega'] },
+];
+function EditorEtapas({ p, onListo }: { p: Proyecto; onListo: () => void }) {
+  const { cambiarEtapas } = useStore();
+  const toast = useToast();
+  const [lista, setLista] = useState<string[]>(p.etapas);
+  const [nueva, setNueva] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const actualNombre = p.etapas[p.etapa];
+  const [actual, setActual] = useState<number>(Math.max(0, p.etapas.indexOf(actualNombre)));
+  const mover = (i: number, d: number) => { const j = i + d; if (j < 0 || j >= lista.length) return; const x = [...lista]; [x[i], x[j]] = [x[j], x[i]]; setLista(x); if (actual === i) setActual(j); else if (actual === j) setActual(i); };
+  const sacar = (i: number) => { setLista(lista.filter((_, k) => k !== i)); if (actual >= i && actual > 0) setActual(actual - 1); };
+  const sumar = () => { const t = nueva.trim(); if (!t || lista.includes(t)) return; setLista([...lista, t]); setNueva(''); };
+  const guardar = async () => {
+    if (!lista.length) return toast('Tiene que tener al menos una etapa');
+    setGuardando(true);
+    const fin = terminado(p) ? lista.length : Math.min(actual, lista.length - 1);
+    const err = await cambiarEtapas(p.id, lista, fin);
+    setGuardando(false);
+    if (err) return toast('No se pudo guardar: ' + err);
+    toast('Etapas guardadas. El cliente ya las ve.');
+    onListo();
+  };
+  return (
+    <div className="mt-5 pt-5 border-t border-border space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[12px] text-text-muted mr-1">Empezar de:</span>
+        {PLANTILLAS_ETAPAS.map((t) => (
+          <button key={t.nombre} onClick={() => { setLista(t.etapas); setActual(0); }} className="h-7 px-3 rounded-full text-[12px] bg-surface-raised text-text-secondary hover:text-text-primary hover:bg-border">{t.nombre}</button>
+        ))}
+      </div>
+      <ol className="space-y-1.5">
+        {lista.map((e, i) => (
+          <li key={e + i} className={cn('flex items-center gap-2 rounded-lg px-2.5 h-10 border', i === actual && !terminado(p) ? 'border-rojo/40 bg-err-bg' : 'border-border')}>
+            <span className="tnum text-[12px] text-text-subtle w-5 text-center">{i + 1}</span>
+            <input value={e} onChange={(ev) => setLista(lista.map((x, k) => (k === i ? ev.target.value : x)))} aria-label={'Etapa ' + (i + 1)} className="flex-1 min-w-0 bg-transparent text-[13px] font-medium outline-none" />
+            {!terminado(p) && (i === actual
+              ? <span className="text-[11px] text-rojo font-medium whitespace-nowrap">Etapa actual</span>
+              : <button onClick={() => setActual(i)} className="text-[11px] text-text-subtle hover:text-text-primary whitespace-nowrap">Marcar actual</button>)}
+            <button onClick={() => mover(i, -1)} disabled={i === 0} aria-label="Subir" className="grid place-items-center size-7 rounded-md text-text-muted hover:bg-surface-raised disabled:opacity-30">↑</button>
+            <button onClick={() => mover(i, 1)} disabled={i === lista.length - 1} aria-label="Bajar" className="grid place-items-center size-7 rounded-md text-text-muted hover:bg-surface-raised disabled:opacity-30">↓</button>
+            <button onClick={() => sacar(i)} disabled={lista.length === 1} aria-label={'Sacar ' + e} className="grid place-items-center size-7 rounded-md text-text-muted hover:text-rojo hover:bg-surface-raised disabled:opacity-30">×</button>
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1.5">
+          <input id={'nueva-etapa-' + p.id} value={nueva} onChange={(e) => setNueva(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sumar()} placeholder="Nueva etapa" className="h-9 w-[180px] rounded-lg bg-surface-raised px-3 text-[13px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]" />
+          <Btn size="sm" variant="secondary" className="!h-9" onClick={sumar}><Plus className="size-3.5" />Sumar</Btn>
+        </div>
+        <div className="flex gap-2"><Btn size="sm" variant="ghost" onClick={onListo}>Cancelar</Btn><Btn size="sm" disabled={guardando} onClick={guardar}>{guardando ? 'Guardando…' : 'Guardar etapas'}</Btn></div>
+      </div>
+      <p className="text-[11px] text-text-muted">Las automatizaciones siguen funcionando: la tarea de cobrar el saldo se crea al llegar a la última etapa.</p>
     </div>
   );
 }
@@ -368,7 +444,7 @@ function EntregablesEstudio({ p }: { p: Proyecto }) {
   const [subiendo, setSubiendo] = useState<string | null>(null);
   const [nueva, setNueva] = useState(false);
   const [titulo, setTitulo] = useState('');
-  const [etapa, setEtapa] = useState<string>(ETAPAS[Math.min(p.etapa, 5)]);
+  const [etapa, setEtapa] = useState<string>(p.etapas[Math.min(p.etapa, p.etapas.length - 1)]);
   const subir = async (eid: string, files: FileList | null) => {
     if (!files?.length) return;
     setSubiendo(eid);
@@ -435,7 +511,7 @@ function EntregablesEstudio({ p }: { p: Proyecto }) {
           <p className="font-medium">Nueva entrega</p>
           <input id={'ne-titulo-' + p.id} autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && crearEntrega()} placeholder="Ej: Papelería v2" className="h-10 rounded-lg bg-surface-raised px-3 text-[13px] outline-none" />
           <select id={'ne-etapa-' + p.id} aria-label="Etapa" value={etapa} onChange={(e) => setEtapa(e.target.value)} className="h-10 rounded-lg bg-surface-raised px-3 text-[13px] outline-none">
-            {ETAPAS.map((x) => <option key={x}>{x}</option>)}
+            {p.etapas.map((x) => <option key={x}>{x}</option>)}
           </select>
           <p className="text-[11px] text-text-muted">Queda como borrador (el cliente no la ve) hasta que subas archivos y la envíes.</p>
           <div className="mt-auto flex justify-end gap-2"><Btn size="sm" variant="ghost" onClick={() => setNueva(false)}>Cancelar</Btn><Btn size="sm" onClick={crearEntrega}>Crear</Btn></div>
@@ -551,7 +627,7 @@ function Clientes({ abrir }: { abrir: (id: string) => void }) {
             {proyectos.map((p) => (
               <tr key={p.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 font-medium">{p.cliente}</td>
-                <td className="px-4 py-3"><button onClick={() => abrir(p.id)} className="hover:underline underline-offset-2">{p.nombre}</button><span className="block text-[11px] text-text-muted">{etapaNombre(p.etapa)}</span></td>
+                <td className="px-4 py-3"><button onClick={() => abrir(p.id)} className="hover:underline underline-offset-2">{p.nombre}</button><span className="block text-[11px] text-text-muted">{etapaNombre(p)}</span></td>
                 <td className="px-4 py-3 text-text-secondary">{p.accesoCliente ? usuarioDe(p.accesoCliente.email) : <span className="text-text-subtle">Sin acceso todavía</span>}</td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   {p.accesoCliente && (

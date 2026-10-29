@@ -8,7 +8,13 @@ export const ETAPA_DESC: Record<string, string> = {
   Diseño: 'Desarrollo del sistema visual',
   Revisiones: 'Ajustes por ronda de feedback',
   Entrega: 'Archivos finales y manual',
+  Naming: 'Búsqueda y elección del nombre',
+  Implementación: 'Aplicaciones y piezas finales',
 };
+/** Etapas del proyecto: las propias si las tiene, si no las 6 de siempre */
+export const etapasDe = (p: { etapas?: string[] | null }): string[] => (p.etapas?.length ? p.etapas : [...ETAPAS]);
+export const terminado = (p: { etapa: number; etapas?: string[] | null }) => p.etapa >= etapasDe(p).length;
+export const etapaNombre = (p: { etapa: number; etapas?: string[] | null }) => (terminado(p) ? 'Terminado' : etapasDe(p)[p.etapa]);
 
 export type Persona = { id: string; nombre: string; rol: string; iniciales: string; tono: string; esAdmin: boolean; email?: string };
 /** Equipo del estudio (se llena al cargar desde la base) */
@@ -71,7 +77,8 @@ export type Proyecto = {
   servicio: string;
   plan: string;
   total: number; // solo se conoce con Números desbloqueado
-  etapa: number; // índice en ETAPAS; 6 = terminado
+  etapa: number; // índice en etapas; = etapas.length → terminado
+  etapas: string[]; // propias del proyecto o las 6 de siempre
   inicio: string;
   inicioISO?: string | null;
   entregaFinal: string;
