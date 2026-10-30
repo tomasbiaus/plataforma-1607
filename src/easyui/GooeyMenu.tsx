@@ -10,6 +10,8 @@ export interface GooeyOption {
   value: string;
   label: string;
   dot?: string;
+  /** color lleno de la pastilla cuando esta opción está elegida (texto blanco) */
+  color?: string;
 }
 
 export interface GooeyMenuProps {
@@ -38,6 +40,9 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
   const panelHeight = options.length * rowH + PAD * 2;
   const panelY = pillH + GAP;
   const selected = options.find((o) => o.value === value) ?? options[0];
+  const lleno = selected.color; // si la opción tiene color, la pastilla y el menú van de ese color
+  const fondo = lleno ? { background: lleno, transition: 'background-color .25s ease' } : undefined;
+  const txt = lleno ? 'text-white' : 'text-on-ink';
 
   useEffect(() => {
     if (!open) return;
@@ -79,10 +84,10 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
 
       {/* Capa gooey: pastilla + panel que gotea */}
       <div className="absolute left-0 top-0 pointer-events-none" style={{ width, height: panelY + panelHeight, filter: `url(#${fid})`, transform: 'translateZ(0)', isolation: 'isolate' }}>
-        <div className="absolute left-0 top-0 bg-ink" style={{ width, height: pillH, borderRadius: pillH / 2 }} />
+        <div className={cn('absolute left-0 top-0', !lleno && 'bg-ink')} style={{ width, height: pillH, borderRadius: pillH / 2, ...fondo }} />
         <motion.div
-          className="absolute left-0 top-0 bg-ink"
-          style={{ width, height: panelHeight, transformOrigin: '50% 0%', borderRadius: 14, willChange: 'transform' }}
+          className={cn('absolute left-0 top-0', !lleno && 'bg-ink')}
+          style={{ width, height: panelHeight, transformOrigin: '50% 0%', borderRadius: 14, willChange: 'transform', ...fondo }}
           initial={false}
           animate={open ? { y: panelY, scaleY: 1 } : { y: 0, scaleY: pillH / panelHeight }}
           transition={open ? { y: DROP_SPRING, scaleY: { ...GROW_SPRING, delay: 0.05 } } : { y: SNAP_SPRING, scaleY: SNAP_SPRING }}
@@ -99,10 +104,11 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
         style={{ width, height: pillH, borderRadius: pillH / 2 }}
       >
         <span className="flex items-center gap-1.5 min-w-0">
-          {selected.dot && <span className="size-1.5 rounded-full shrink-0" style={{ background: selected.dot }} />}
-          <span className="text-[11px] font-medium text-on-ink truncate">{selected.label}</span>
+          {selected.dot && !lleno && <span className="size-1.5 rounded-full shrink-0" style={{ background: selected.dot }} />}
+          {lleno && <span className="size-1.5 rounded-full shrink-0 bg-white/80" />}
+          <span className={cn('text-[11px] font-medium truncate', txt)}>{selected.label}</span>
         </span>
-        <motion.svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-on-ink opacity-60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" animate={{ rotate: open ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+        <motion.svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className={cn(txt, 'opacity-70')} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" animate={{ rotate: open ? 180 : 0 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
           <path d="m6 9 6 6 6-6" />
         </motion.svg>
       </button>
@@ -126,14 +132,14 @@ export const GooeyMenu: React.FC<GooeyMenuProps> = ({ options, value, onSelect, 
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => choose(i)}
                 variants={{ open: { opacity: 1, y: 0, transition: ROW_SPRING }, closed: { opacity: 0, y: -8, transition: SNAP_SPRING } }}
-                className={cn('mx-[5px] flex cursor-pointer items-center justify-between rounded-[10px] px-2 text-[11px] font-medium transition-colors duration-150', i === activeIndex ? 'bg-ink-hover text-on-ink' : 'text-on-ink opacity-75')}
+                className={cn('mx-[5px] flex cursor-pointer items-center justify-between rounded-[10px] px-2 text-[11px] font-medium transition-colors duration-150', lleno ? (i === activeIndex ? 'bg-white/20 text-white' : 'text-white/85') : i === activeIndex ? 'bg-ink-hover text-on-ink' : 'text-on-ink opacity-75')}
                 style={{ height: rowH }}
               >
                 <span className="flex items-center gap-1.5">
-                  {o.dot && <span className="size-1.5 rounded-full" style={{ background: o.dot }} />}
+                  {(o.color || o.dot) && <span className={cn('size-2 rounded-full', lleno && 'ring-1 ring-white/70')} style={{ background: o.color ?? o.dot }} />}
                   {o.label}
                 </span>
-                {o.value === value && <span className="size-1.5 rounded-full bg-rojo" />}
+                {o.value === value && (lleno ? <span className="text-[10px] text-white">✓</span> : <span className="size-1.5 rounded-full bg-rojo" />)}
               </motion.li>
             ))}
           </motion.ul>

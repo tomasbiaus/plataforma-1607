@@ -30,6 +30,8 @@
   --warn: #D9961F; --warn-bg: #FBF1DC; --warn-fg: #8A5A12;
   --err-bg: #FBEAE5; --err-fg: #9E321C;
   --info: #4E86C6; --info-bg: #E6EEF8; --info-fg: #2D5B91;
+  /* botones de estado de tareas: color lleno + texto blanco */
+  --st-pendiente: #8C8B84; --st-curso: #3B78C2; --st-hecha: #3F8C55;
   --glass: rgba(250, 250, 246, 0.62);
   --glass-edge: rgba(255, 255, 255, 0.75);
   --overlay: rgba(26, 26, 26, 0.25);
@@ -62,6 +64,7 @@
   --warn: #E5A93A; --warn-bg: rgba(229, 169, 58, 0.14); --warn-fg: #EBBD66;
   --err-bg: rgba(224, 96, 68, 0.15); --err-fg: #F08C74;
   --info: #6FA3DD; --info-bg: rgba(111, 163, 221, 0.14); --info-fg: #93BBE8;
+  --st-pendiente: #5E5D58; --st-curso: #3A6FAE; --st-hecha: #3B7E50;
   --glass: rgba(22, 22, 21, 0.7);
   --glass-edge: rgba(255, 255, 255, 0.06);
   --overlay: rgba(0, 0, 0, 0.55);

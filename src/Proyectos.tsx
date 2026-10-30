@@ -28,7 +28,7 @@ export function EstadoPill({ t }: { t: Tarea }) {
       ariaLabel="Estado"
       value={t.estado}
       onSelect={(v) => v !== t.estado && setEstadoTarea(t.id, v as EstadoTarea)}
-      options={(['pendiente', 'curso', 'hecha'] as EstadoTarea[]).map((e) => ({ value: e, label: ESTADOS[e].label, dot: DOT[e] }))}
+      options={(['pendiente', 'curso', 'hecha'] as EstadoTarea[]).map((e) => ({ value: e, label: ESTADOS[e].label, dot: DOT[e], color: `var(--st-${e})` }))}
     />
   );
 }

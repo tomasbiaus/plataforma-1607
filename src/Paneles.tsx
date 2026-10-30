@@ -119,7 +119,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
               {/* Notas */}
               <section>
                 <h3 className="eyebrow mb-2 flex items-center gap-1.5"><StickyNote className="size-3.5" />Notas</h3>
-                <textarea id={'notas-' + t.id} value={t.notas ?? ''} onChange={(e) => actualizarTarea(t.id, { notas: e.target.value })} rows={4} placeholder="Escribí el contexto, decisiones, lo que pidió el cliente…" className="w-full rounded-xl bg-[var(--bg)] border border-border p-3 text-[13px] leading-relaxed outline-none focus:border-border-hover resize-y" />
+                <TextoAuto id={'notas-' + t.id} value={t.notas ?? ''} onChange={(v) => actualizarTarea(t.id, { notas: v })} placeholder="Escribí el contexto, decisiones, lo que pidió el cliente…" className="w-full rounded-xl bg-[var(--bg)] border border-border p-3 text-[13px] leading-relaxed outline-none focus:border-border-hover resize-none overflow-hidden" />
               </section>
 
               {/* Referencias */}
@@ -471,4 +471,16 @@ function SlackConfig() {
       </AnimatePresence>
     </section>
   );
+}
+
+/* Caja de texto que crece con lo que tiene escrito: se lee entera, sin scroll interno */
+function TextoAuto({ value, onChange, className, ...rest }: { id?: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.max(el.scrollHeight + 2, 96) + 'px';
+  }, [value]);
+  return <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)} rows={4} className={className} {...rest} />;
 }
