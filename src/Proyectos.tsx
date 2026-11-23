@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X, Archive } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X, Archive, Lock } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Avatar, AvatarStack, PillNav, Btn, Card, Fade, useToast } from './ui';
 import { useStore, useTareas, useArchivo } from './store';
 import { NuevoProyectoSheet, AutomatizacionesSheet, ArchivoSheet } from './Paneles';
 import { GooeyMenu } from './easyui/GooeyMenu';
-import { CLIENTES, EQUIPO, ETAPAS, terminado, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
+import { CLIENTES, EQUIPO, ETAPAS, esAdmin, terminado, HOY, fecha, dias, addDias, type Tarea, type EstadoTarea, type Prioridad, type Proyecto } from './data';
 import { DatePicker } from './easyui/DatePicker';
 
 /* ───────── piezas compartidas ───────── */
@@ -297,10 +297,14 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
   const [cliente, setCliente] = useState(Object.keys(CLIENTES)[0] ?? '');
   const [quien, setQuien] = useState((sesion as any)?.persona ?? '');
   const [dia, setDia] = useState(addDias(HOY, 7));
+  const yo = (sesion as any)?.persona ?? '';
+  const soyAdmin = esAdmin(yo); // solo el admin puede cargar pedidos privados
+  const [privada, setPrivada] = useState(false);
   const guardar = () => {
     if (!titulo.trim()) return onDone();
-    agregarTarea({ cliente, proyecto: CLIENTES[cliente]?.proyecto, titulo: titulo.trim(), quien: [quien], estado: 'pendiente', prioridad: 'media', inicio: dia || null, equipo: ['Design'] });
-    toast('Tarea agregada');
+    const priv = soyAdmin && privada;
+    agregarTarea({ cliente, proyecto: CLIENTES[cliente]?.proyecto, titulo: titulo.trim(), quien: [priv ? yo : quien], estado: 'pendiente', prioridad: 'media', inicio: dia || null, equipo: ['Design'], privada: priv });
+    toast(priv ? 'Tarea privada agregada: solo la ves vos' : 'Tarea agregada');
     onDone();
   };
   const sel = 'h-8 rounded-lg bg-surface-raised px-2 text-[12px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]';
@@ -308,8 +312,19 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
     <tr className="bg-surface-hover">
       <td className="px-3 pl-4 py-2"><select id="nt-cliente" aria-label="Cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} className={sel}>{Object.entries(CLIENTES).map(([k, c]) => <option key={k} value={k}>{c.nombre}</option>)}</select></td>
       <td className="px-3 py-2"><input id="nt-titulo" autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && guardar()} placeholder="Qué hay que hacer" className={cn(sel, 'w-full bg-surface border border-border')} /></td>
-      <td className="px-3 py-2"><select id="nt-quien" aria-label="Responsable" value={quien} onChange={(e) => setQuien(e.target.value)} className={sel}>{EQUIPO.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select></td>
-      <td className="px-3 py-2 text-[12px] text-text-muted">Sin empezar</td>
+      <td className="px-3 py-2">
+        {soyAdmin && privada
+          ? <span className="inline-flex h-8 items-center px-2 text-[12px] text-text-muted">Vos</span>
+          : <select id="nt-quien" aria-label="Responsable" value={quien} onChange={(e) => setQuien(e.target.value)} className={sel}>{EQUIPO.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}</select>}
+      </td>
+      <td className="px-3 py-2">
+        {soyAdmin
+          ? <button type="button" aria-pressed={privada} onClick={() => setPrivada(!privada)} title="Solo la ves vos: no le aparece a nadie más del equipo"
+              className={cn('inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[12px] font-medium transition-colors', privada ? 'bg-ink text-on-ink' : 'bg-surface-raised text-text-secondary hover:text-text-primary')}>
+              <Lock className="size-3.5" />{privada ? 'Solo yo' : 'Privada'}
+            </button>
+          : <span className="text-[12px] text-text-muted">Sin empezar</span>}
+      </td>
       <td className="px-3 py-2 text-[12px] text-text-muted">Media</td>
       <td className="px-3 py-2"><DatePicker id="nt-fecha" aria-label="Fecha" value={dia} onChange={(d) => setDia(d ?? '')} placeholder="Fecha" corto className="h-8 text-[12px]" /></td>
       <td className="px-3 py-2"><div className="flex gap-1"><Btn size="sm" onClick={guardar}>Guardar</Btn><Btn size="sm" variant="ghost" onClick={onDone}>Cancelar</Btn></div></td>

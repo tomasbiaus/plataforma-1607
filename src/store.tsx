@@ -431,7 +431,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     actualizarTarea: (tid, patch, log) => {
       setTareas((ts) => ts.map((x) => (x.id === tid ? { ...x, ...patch, historial: log ? [...(x.historial ?? []), { quien: (sesion as any)?.persona, texto: log, cuando: 'Recién' }] : x.historial } : x)));
       const cols: Record<string, any> = {};
-      (['titulo', 'prioridad', 'inicio', 'fin', 'equipo', 'notas', 'checklist', 'links'] as const).forEach((k) => { if (k in patch) cols[k] = (patch as any)[k] ?? null; });
+      (['titulo', 'prioridad', 'inicio', 'fin', 'equipo', 'notas', 'checklist', 'links', 'privada'] as const).forEach((k) => { if (k in patch) cols[k] = (patch as any)[k] ?? null; });
       if (Object.keys(cols).length) {
         debounce('t-' + tid + Object.keys(cols).join(), async () => {
           const { error } = await supabase.from('tareas').update(cols).eq('id', tid);

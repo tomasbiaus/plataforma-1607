@@ -23,7 +23,8 @@ const Prop = ({ label, children }: { label: string; children: React.ReactNode })
 
 /* ───────── 1. La tarea como página ───────── */
 export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => void }) {
-  const { tareas, tareaAbierta, abrirTarea, actualizarTarea, proyectos, archivarTareas, borrarTareas } = useStore();
+  const { tareas, tareaAbierta, abrirTarea, actualizarTarea, proyectos, archivarTareas, borrarTareas, sesion } = useStore();
+  const soyAdmin = esAdmin((sesion as any)?.persona);
   const toast = useToast();
   const t = tareas.find((x) => x.id === tareaAbierta);
   const [nuevoItem, setNuevoItem] = useState('');
@@ -40,7 +41,13 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
             <SheetHeader className="pt-6 gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <ClienteTag id={t.cliente} className="text-text-muted" />
-                {t.privada && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Lock className="size-3" />Solo vos</span>}
+                {soyAdmin ? (
+                  <button type="button" aria-pressed={!!t.privada} onClick={() => { actualizarTarea(t.id, { privada: !t.privada }); toast(t.privada ? 'Ahora la ve el equipo' : 'Ahora solo la ves vos'); }}
+                    title={t.privada ? 'Solo la ves vos. Tocá para que la vea el equipo' : 'Tocá para que solo la veas vos'}
+                    className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px] transition-colors', t.privada ? 'bg-ink text-on-ink' : 'text-text-muted hover:text-text-primary hover:bg-surface-raised')}>
+                    <Lock className="size-3" />{t.privada ? 'Solo vos' : 'Hacer privada'}
+                  </button>
+                ) : t.privada && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Lock className="size-3" />Solo vos</span>}
                 {t.plantilla && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Sparkles className="size-3" />De plantilla</span>}
               </div>
               <SheetTitle className="font-bold">
