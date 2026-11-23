@@ -41,13 +41,7 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
             <SheetHeader className="pt-6 gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <ClienteTag id={t.cliente} className="text-text-muted" />
-                {soyAdmin ? (
-                  <button type="button" aria-pressed={!!t.privada} onClick={() => { actualizarTarea(t.id, { privada: !t.privada }); toast(t.privada ? 'Ahora la ve el equipo' : 'Ahora solo la ves vos'); }}
-                    title={t.privada ? 'Solo la ves vos. Tocá para que la vea el equipo' : 'Tocá para que solo la veas vos'}
-                    className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px] transition-colors', t.privada ? 'bg-ink text-on-ink' : 'text-text-muted hover:text-text-primary hover:bg-surface-raised')}>
-                    <Lock className="size-3" />{t.privada ? 'Solo vos' : 'Hacer privada'}
-                  </button>
-                ) : t.privada && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Lock className="size-3" />Solo vos</span>}
+                {t.privada && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Lock className="size-3" />Solo vos</span>}
                 {t.plantilla && <span className="inline-flex items-center gap-1 text-[11px] text-text-muted"><Sparkles className="size-3" />De plantilla</span>}
               </div>
               <SheetTitle className="font-bold">
@@ -71,6 +65,17 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                     <button key={pr} onClick={() => actualizarTarea(t.id, { prioridad: t.prioridad === pr ? null : pr }, `cambió la prioridad a ${pr}`)} className={cn('h-6 px-2 rounded-md text-[11px] font-medium capitalize transition-colors', t.prioridad === pr ? (pr === 'alta' ? 'bg-err-bg text-err-fg' : pr === 'media' ? 'bg-warn-bg text-warn-fg' : 'bg-ok-bg text-ok-fg') : 'text-text-muted hover:bg-surface-raised')}>{pr}</button>
                   ))}
                 </Prop>
+                {soyAdmin && (
+                  <Prop label="Visible para">
+                    {([false, true] as const).map((priv) => (
+                      <button key={String(priv)} aria-pressed={!!t.privada === priv}
+                        onClick={() => { if (!!t.privada !== priv) { actualizarTarea(t.id, { privada: priv }); toast(priv ? 'Ahora solo la ves vos' : 'Ahora la ve el equipo'); } }}
+                        className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11px] font-medium transition-colors', !!t.privada === priv ? (priv ? 'bg-ink text-on-ink' : 'bg-surface-raised text-text-primary') : 'text-text-muted hover:bg-surface-raised')}>
+                        {priv && <Lock className="size-3" />}{priv ? 'Solo yo' : 'Equipo'}
+                      </button>
+                    ))}
+                  </Prop>
+                )}
                 <Prop label="Responsables">
                   {EQUIPO.map((m) => {
                     const on = t.quien.includes(m.id);
