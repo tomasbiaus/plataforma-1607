@@ -6,7 +6,7 @@ import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
 import { Avatar, Btn, TemaSwitch, useToast, ConfirmBtn } from './ui';
 import { useStore, useArchivo, type NuevoProyecto } from './store';
-import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, usuarioDe, type Prioridad } from './data';
+import { CLIENTES, EQUIPO, ETAPAS, terminado, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, usuarioDe, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 import { GaleriaArchivos } from './Archivos';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
@@ -96,12 +96,27 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                     return <button key={eq} onClick={() => actualizarTarea(t.id, { equipo: on ? t.equipo!.filter((x) => x !== eq) : [...(t.equipo ?? []), eq] })} className={cn('h-6 px-2 rounded-md text-[11px] font-medium transition-colors', on ? (eq === 'Design' ? 'bg-[#FBEDE4] text-[#9A4A1A]' : 'bg-info-bg text-info-fg') : 'text-text-muted hover:bg-surface-raised')}>{eq}</button>;
                   })}
                 </Prop>
-                {p && (
-                  <Prop label="Proyecto">
-                    <button onClick={() => { abrirTarea(null); abrirProyecto(p.id); }} className="inline-flex items-center gap-1 text-[13px] hover:underline underline-offset-2">{p.nombre}<ArrowUpRight className="size-3.5 text-text-subtle" /></button>
-                    {t.etapa && <span className="text-[11px] text-text-muted">· {t.etapa}</span>}
-                  </Prop>
-                )}
+                <Prop label="Cliente">
+                  <select id={'cliente-' + t.id} aria-label="Cliente" value={t.cliente}
+                    onChange={(e) => {
+                      const k = e.target.value;
+                      const delCliente = proyectos.filter((x) => x.clienteId === CLIENTES[k]?.id && !terminado(x));
+                      actualizarTarea(t.id, { cliente: k, proyecto: delCliente.length === 1 ? delCliente[0].id : undefined, etapa: undefined }, `la pasó a ${CLIENTES[k]?.nombre ?? k}`);
+                    }}
+                    className="h-7 max-w-full rounded-md bg-surface-raised px-2 text-[12px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]">
+                    {Object.entries(CLIENTES).sort((a, b) => a[1].nombre.localeCompare(b[1].nombre)).map(([k, c]) => <option key={k} value={k}>{c.nombre}</option>)}
+                  </select>
+                </Prop>
+                <Prop label="Proyecto">
+                  <select id={'proyecto-' + t.id} aria-label="Proyecto" value={t.proyecto ?? ''}
+                    onChange={(e) => { const v = e.target.value || undefined; actualizarTarea(t.id, { proyecto: v, etapa: undefined }, v ? `la sumó a ${proyectos.find((x) => x.id === v)?.nombre}` : 'la sacó del proyecto'); }}
+                    className="h-7 max-w-[70%] rounded-md bg-surface-raised px-2 text-[12px] outline-none focus:ring-2 focus:ring-[var(--accent-ring)]">
+                    <option value="">Sin proyecto (pieza suelta)</option>
+                    {proyectos.filter((x) => x.clienteId === CLIENTES[t.cliente]?.id || x.id === t.proyecto).map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
+                  </select>
+                  {p && <button onClick={() => { abrirTarea(null); abrirProyecto(p.id); }} aria-label={`Abrir ${p.nombre}`} title="Abrir proyecto" className="grid place-items-center size-7 rounded-md text-text-subtle hover:text-text-primary hover:bg-surface-raised"><ArrowUpRight className="size-3.5" /></button>}
+                  {t.etapa && <span className="text-[11px] text-text-muted">· {t.etapa}</span>}
+                </Prop>
               </div>
 
               {/* Checklist */}
