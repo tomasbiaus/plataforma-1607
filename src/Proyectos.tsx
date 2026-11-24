@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, Check as CheckIcon, ChevronDown, X, Archive, Lock } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Table2, Columns3, GanttChart, CalendarDays, Layers, Flag, Zap, Sparkles, Users, CircleDot, Building2, Check as CheckIcon, ChevronDown, X, Archive, Lock } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Avatar, AvatarStack, PillNav, Btn, Card, Fade, useToast } from './ui';
@@ -123,7 +123,7 @@ type VistaDB = 'tabla' | 'cliente' | 'cronograma' | 'calendario' | 'etapas';
 
 export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => void; Etapas: React.ComponentType<{ abrir: (id: string) => void; quien: string[] }> }) {
   const [vista, setVista] = useState<VistaDB>('tabla');
-  const [quien, setQuien] = useState<string[]>([]);
+  const [f, setF] = useState<Filtro>(SIN_FILTRO);
   const [nueva, setNueva] = useState(false);
   const [plantilla, setPlantilla] = useState(false);
   const [autos, setAutos] = useState(false);
@@ -148,15 +148,15 @@ export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => vo
         <div className="max-w-full scroll-x">
           <PillNav size="sm" items={(Object.keys(labels) as VistaDB[]).map((v) => ({ id: v, label: labels[v] }))} value={vista} onChange={(v) => setVista(v as VistaDB)} />
         </div>
-        <FiltroResponsables value={quien} onChange={setQuien} etapas={vista === 'etapas'} />
+        <Filtros f={f} setF={setF} etapas={vista === 'etapas'} />
       </div>
 
       <Fade k={vista}>
-        {vista === 'tabla' && <Tabla quien={quien} nueva={nueva} setNueva={setNueva} />}
-        {vista === 'cliente' && <PorCliente quien={quien} />}
-        {vista === 'cronograma' && <Cronograma quien={quien} />}
-        {vista === 'calendario' && <Calendario quien={quien} abrir={abrir} />}
-        {vista === 'etapas' && <Etapas abrir={abrir} quien={quien} />}
+        {vista === 'tabla' && <Tabla f={f} nueva={nueva} setNueva={setNueva} />}
+        {vista === 'cliente' && <PorCliente f={f} />}
+        {vista === 'cronograma' && <Cronograma f={f} />}
+        {vista === 'calendario' && <Calendario f={f} abrir={abrir} />}
+        {vista === 'etapas' && <Etapas abrir={abrir} quien={f.quien} />}
       </Fade>
       <NuevoProyectoSheet open={plantilla} onClose={() => setPlantilla(false)} onCreado={(id) => { setPlantilla(false); toast('Proyecto creado con sus tareas y el acceso del cliente'); abrir(id); }} />
       <AutomatizacionesSheet open={autos} onClose={() => setAutos(false)} />
@@ -165,7 +165,87 @@ export default function Proyectos({ abrir, Etapas }: { abrir: (id: string) => vo
 }
 
 const ORDEN_P: Record<string, number> = { alta: 0, media: 1, baja: 2 };
-const filtrar = (ts: Tarea[], quien: string[]) => (quien.length ? ts.filter((t) => t.quien.some((q) => quien.includes(q))) : ts);
+export type Filtro = { quien: string[]; estado: string[]; prioridad: string[]; cliente: string[] };
+const SIN_FILTRO: Filtro = { quien: [], estado: [], prioridad: [], cliente: [] };
+const hayFiltro = (f: Filtro) => !!(f.quien.length || f.estado.length || f.prioridad.length || f.cliente.length);
+const filtrar = (ts: Tarea[], f: Filtro) => ts.filter((t) =>
+  (!f.quien.length || t.quien.some((q) => f.quien.includes(q))) &&
+  (!f.estado.length || f.estado.includes(t.estado)) &&
+  (!f.prioridad.length || f.prioridad.includes(t.prioridad ?? 'sin')) &&
+  (!f.cliente.length || f.cliente.includes(t.cliente)));
+
+/* Botón de filtro genérico con varias opciones tildables */
+function FiltroMulti({ label, icono: Icono, opciones, value, onChange }: {
+  label: string; icono: React.ElementType; value: string[]; onChange: (v: string[]) => void;
+  opciones: { id: string; label: string; dot?: string; n?: number }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const fuera = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', fuera); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  const elegidas = opciones.filter((o) => value.includes(o.id));
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="true"
+        className={cn('inline-flex items-center gap-2 h-8 pl-3 pr-2.5 rounded-full text-[12px] font-medium border transition-colors', value.length ? 'bg-ink text-on-ink border-ink' : 'bg-surface border-border text-text-secondary hover:text-text-primary hover:border-border-hover')}>
+        <Icono className="size-3.5" />
+        <span className="max-w-[140px] truncate">{value.length === 0 ? label : value.length === 1 ? elegidas[0]?.label : `${label} · ${value.length}`}</span>
+        <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }} transition={motionTransitions.springSnappy}
+            className="absolute right-0 top-full mt-2 z-40 w-[232px] max-h-[min(420px,70vh)] overflow-y-auto origin-top-right rounded-xl border border-border bg-surface p-1.5 shadow-[var(--shadow-elevated)]" role="menu">
+            {opciones.map((o) => {
+              const on = value.includes(o.id);
+              return (
+                <button key={o.id} role="menuitemcheckbox" aria-checked={on} onClick={() => toggle(o.id)}
+                  className="w-full flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-left text-[13px] hover:bg-surface-hover">
+                  <span className={cn('size-4 rounded-[5px] border grid place-items-center shrink-0 transition-colors', on ? 'bg-ink border-ink text-on-ink' : 'border-border-hover')}>{on && <CheckIcon className="size-3" strokeWidth={3} />}</span>
+                  {o.dot && <span className="size-2 rounded-full shrink-0" style={{ background: o.dot }} />}
+                  <span className="flex-1 truncate">{o.label}</span>
+                  {o.n !== undefined && <span className="tnum text-[11px] text-text-muted">{o.n}</span>}
+                </button>
+              );
+            })}
+            <div className="flex justify-end mt-1 pt-1.5 px-1 border-t border-border-subtle">
+              <button onClick={() => onChange([])} disabled={!value.length} className="h-8 px-2 rounded-md text-[12px] text-text-muted hover:text-text-primary disabled:opacity-40">Ver todo</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* Barra de filtros: responsable, estado, prioridad y cliente (sirven en todas las vistas) */
+function Filtros({ f, setF, etapas }: { f: Filtro; setF: (f: Filtro) => void; etapas: boolean }) {
+  const tareas = useTareas();
+  const cuenta = (pred: (t: Tarea) => boolean) => tareas.filter(pred).length;
+  const clientes = Object.entries(CLIENTES).filter(([k]) => tareas.some((t) => t.cliente === k)).sort((a, b) => a[1].nombre.localeCompare(b[1].nombre));
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <FiltroResponsables value={f.quien} onChange={(quien) => setF({ ...f, quien })} etapas={etapas} />
+      {!etapas && <>
+        <FiltroMulti label="Estado" icono={CircleDot} value={f.estado} onChange={(estado) => setF({ ...f, estado })}
+          opciones={(['pendiente', 'curso', 'hecha'] as EstadoTarea[]).map((e) => ({ id: e, label: ESTADOS[e].label, dot: `var(--st-${e})`, n: cuenta((t) => t.estado === e) }))} />
+        <FiltroMulti label="Prioridad" icono={Flag} value={f.prioridad} onChange={(prioridad) => setF({ ...f, prioridad })}
+          opciones={[...['alta', 'media', 'baja'].map((p) => ({ id: p, label: PRIO[p].label, dot: p === 'alta' ? 'var(--err)' : p === 'media' ? 'var(--warn)' : 'var(--ok)', n: cuenta((t) => t.prioridad === p && t.estado !== 'hecha') })), { id: 'sin', label: 'Sin prioridad', n: cuenta((t) => !t.prioridad && t.estado !== 'hecha') }]} />
+        <FiltroMulti label="Cliente" icono={Building2} value={f.cliente} onChange={(cliente) => setF({ ...f, cliente })}
+          opciones={clientes.map(([k, c]) => ({ id: k, label: c.nombre, dot: c.color, n: cuenta((t) => t.cliente === k && t.estado !== 'hecha') }))} />
+      </>}
+      {hayFiltro(f) && (
+        <button onClick={() => setF(SIN_FILTRO)} className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[12px] text-text-muted hover:text-text-primary hover:bg-surface-raised"><X className="size-3.5" />Limpiar</button>
+      )}
+    </div>
+  );
+}
 
 /* Botón "Responsables": filtra por una o varias personas en todas las vistas */
 function FiltroResponsables({ value, onChange, etapas }: { value: string[]; onChange: (v: string[]) => void; etapas: boolean }) {
@@ -226,20 +306,20 @@ function FiltroResponsables({ value, onChange, etapas }: { value: string[]; onCh
 }
 
 /* ── Tabla (vista "All Projects" de Notion) ── */
-function Tabla({ quien, nueva, setNueva }: { quien: string[]; nueva: boolean; setNueva: (b: boolean) => void }) {
+function Tabla({ f, nueva, setNueva }: { f: Filtro; nueva: boolean; setNueva: (b: boolean) => void }) {
   const tareas = useTareas();
   const { abrirTarea, archivarTareas } = useStore();
   const toast = useToast();
   const archivo = useArchivo();
   const [verArchivo, setArchivo] = useState(false);
   const [verHechas, setVerHechas] = useState(true);
-  const hechas = filtrar(tareas, quien).filter((t) => t.estado === 'hecha');
+  const hechas = filtrar(tareas, f).filter((t) => t.estado === 'hecha');
   const lista = useMemo(
     () =>
-      filtrar(tareas, quien)
-        .filter((t) => verHechas || t.estado !== 'hecha')
+      filtrar(tareas, f)
+        .filter((t) => verHechas || f.estado.includes('hecha') || t.estado !== 'hecha')
         .sort((a, b) => (a.estado === 'hecha' ? 1 : 0) - (b.estado === 'hecha' ? 1 : 0) || (ORDEN_P[a.prioridad ?? ''] ?? 3) - (ORDEN_P[b.prioridad ?? ''] ?? 3) || (vence(a) ?? '9').localeCompare(vence(b) ?? '9')),
-    [tareas, quien, verHechas]
+    [tareas, f, verHechas]
   );
   return (
     <div className="space-y-3">
@@ -252,7 +332,7 @@ function Tabla({ quien, nueva, setNueva }: { quien: string[]; nueva: boolean; se
           </thead>
           <tbody className="divide-y divide-border border-t border-border">
             {!lista.length && !nueva && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-[13px] text-text-muted">{quien.length ? 'No hay tareas para ' + quien.map((q) => EQUIPO.find((m) => m.id === q)?.nombre ?? '').join(' ni ') + (verHechas ? '.' : ' sin terminar.') : 'Todavía no hay tareas.'}</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-[13px] text-text-muted">{hayFiltro(f) ? 'No hay tareas con estos filtros.' : 'Todavía no hay tareas.'}</td></tr>
             )}
             {nueva && <FilaNueva onDone={() => setNueva(false)} />}
             <AnimatePresence initial={false}>
@@ -333,10 +413,10 @@ function FilaNueva({ onDone }: { onDone: () => void }) {
 }
 
 /* ── Por cliente (vista "Works by Client") ── */
-function PorCliente({ quien }: { quien: string[] }) {
+function PorCliente({ f }: { f: Filtro }) {
   const tareas = useTareas();
   const { abrirTarea } = useStore();
-  const ts = filtrar(tareas, quien);
+  const ts = filtrar(tareas, f);
   const clientes = Object.keys(CLIENTES).filter((k) => ts.some((t) => t.cliente === k));
   return (
     <div className="scroll-x -mx-4 px-4 lg:mx-0 lg:px-0 pb-3">
@@ -367,10 +447,10 @@ function PorCliente({ quien }: { quien: string[] }) {
 }
 
 /* ── Cronograma (vista "Gantt") ── */
-function Cronograma({ quien }: { quien: string[] }) {
+function Cronograma({ f }: { f: Filtro }) {
   const tareas = useTareas();
   const { abrirTarea } = useStore();
-  const ts = filtrar(tareas, quien);
+  const ts = filtrar(tareas, f);
   const conFecha = ts.filter((t) => t.inicio);
   const desde = addDias(HOY, -38 - ((new Date(HOY + 'T12:00:00').getDay() + 6) % 7));
   const total = 84; // 12 semanas
@@ -447,13 +527,13 @@ function Cronograma({ quien }: { quien: string[] }) {
 
 /* ── Calendario de entregas ── */
 const NOMBRES_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-function Calendario({ quien, abrir }: { quien: string[]; abrir: (id: string) => void }) {
+function Calendario({ f, abrir }: { f: Filtro; abrir: (id: string) => void }) {
   const todos = useEventos();
   const { abrirTarea } = useStore();
   const [mes, setMes] = useState(Number(HOY.slice(5, 7)) - 1 + (Number(HOY.slice(0, 4)) - 2026) * 12);
   const [soloEntregas, setSoloEntregas] = useState(false);
   const [sel, setSel] = useState<string>(() => [...todos].map((e) => e.dia).filter((d) => d >= HOY).sort()[0] ?? HOY);
-  const eventos = todos.filter((e) => (soloEntregas ? e.tipo !== 'tarea' : true) && (!quien.length || e.tipo !== 'tarea' || e.tarea!.quien.some((q) => quien.includes(q))));
+  const eventos = todos.filter((e) => (soloEntregas ? e.tipo !== 'tarea' : true) && (e.tipo === 'tarea' ? filtrar([e.tarea!], f).length > 0 : !f.cliente.length || f.cliente.includes(e.cliente)));
   const porDia = useMemo(() => {
     const m = new Map<string, Evento[]>();
     eventos.forEach((e) => m.set(e.dia, [...(m.get(e.dia) ?? []), e]));
