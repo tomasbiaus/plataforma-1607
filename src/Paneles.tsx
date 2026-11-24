@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut, Archive, ArchiveRestore, Hash } from 'lucide-react';
+import { Plus, X, Link2, Lock, Zap, ArrowUpRight, Sparkles, ListChecks, StickyNote, History, Trash2, KeyRound, LogOut, Archive, ArchiveRestore, Hash, Paperclip, Download, Loader2 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motionTransitions } from './lib/motion-tokens';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetBody, SheetFooter } from './easyui/sheet';
@@ -8,6 +8,7 @@ import { Avatar, Btn, TemaSwitch, useToast, ConfirmBtn } from './ui';
 import { useStore, useArchivo, type NuevoProyecto } from './store';
 import { CLIENTES, EQUIPO, ETAPAS, HOY, fecha, addDias, persona, adminId, disenadores, esAdmin, usuarioDe, type Prioridad } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
+import { GaleriaArchivos } from './Archivos';
 import { EstadoPill, Check, ClienteTag } from './Proyectos';
 import { DatePicker, DateRangePicker } from './easyui/DatePicker';
 
@@ -133,6 +134,9 @@ export function TareaPanel({ abrirProyecto }: { abrirProyecto: (id: string) => v
                 <h3 className="eyebrow mb-2 flex items-center gap-1.5"><StickyNote className="size-3.5" />Notas</h3>
                 <TextoAuto id={'notas-' + t.id} value={t.notas ?? ''} onChange={(v) => actualizarTarea(t.id, { notas: v })} placeholder="Escribí el contexto, decisiones, lo que pidió el cliente…" className="w-full rounded-xl bg-[var(--bg)] border border-border p-3 text-[13px] leading-relaxed outline-none focus:border-border-hover resize-none overflow-hidden" />
               </section>
+
+              {/* Archivos del pedido */}
+              <ArchivosPedido key={t.id} tid={t.id} archivos={t.archivos ?? []} />
 
               {/* Referencias */}
               <section>
@@ -495,4 +499,70 @@ function TextoAuto({ value, onChange, className, ...rest }: { id?: string; value
     el.style.height = Math.max(el.scrollHeight + 2, 96) + 'px';
   }, [value]);
   return <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)} rows={4} className={className} {...rest} />;
+}
+
+/* Documentos adjuntos al pedido: se suben acá, se previsualizan sin descargar y se pueden bajar */
+function ArchivosPedido({ tid, archivos }: { tid: string; archivos: import('./data').Archivo[] }) {
+  const { subirArchivosTarea, quitarArchivoTarea, actualizarTarea, urlArchivo } = useStore();
+  const toast = useToast();
+  const input = React.useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState(0);
+  const [encima, setEncima] = useState(false);
+  const lista = React.useRef(archivos); lista.current = archivos;
+
+  const subir = async (files: File[]) => {
+    if (!files.length) return;
+    setSubiendo(files.length);
+    const nuevos = await subirArchivosTarea(tid, files);
+    setSubiendo(0);
+    if (nuevos.length) {
+      actualizarTarea(tid, { archivos: [...lista.current, ...nuevos] }, nuevos.length === 1 ? `subió ${nuevos[0].nombre}` : `subió ${nuevos.length} archivos`);
+      toast(nuevos.length === 1 ? 'Archivo subido' : `${nuevos.length} archivos subidos`);
+    }
+  };
+  const quitar = async (a: import('./data').Archivo) => {
+    actualizarTarea(tid, { archivos: lista.current.filter((x) => x.path !== a.path) }, `sacó ${a.nombre}`);
+    if (a.path) await quitarArchivoTarea(a.path);
+  };
+  const bajar = async (a: import('./data').Archivo) => {
+    const u = a.path && (await urlArchivo(a.path));
+    if (u) window.open(u, '_blank', 'noopener');
+  };
+
+  return (
+    <section
+      onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setEncima(true); } }}
+      onDragLeave={() => setEncima(false)}
+      onDrop={(e) => { e.preventDefault(); setEncima(false); subir(Array.from(e.dataTransfer.files)); }}
+      className={cn('rounded-xl transition-colors', encima && 'ring-2 ring-[var(--accent-ring)] bg-surface-hover')}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="eyebrow flex items-center gap-1.5"><Paperclip className="size-3.5" />Archivos{archivos.length ? ` · ${archivos.length}` : ''}</h3>
+        <button type="button" onClick={() => input.current?.click()} disabled={!!subiendo} className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[12px] font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised disabled:opacity-60">
+          {subiendo ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}{subiendo ? `Subiendo ${subiendo}…` : 'Subir archivo'}
+        </button>
+        <input ref={input} type="file" multiple hidden onChange={(e) => { subir(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+      </div>
+      {archivos.length ? (
+        <div className="space-y-2">
+          <GaleriaArchivos archivos={archivos} />
+          <ul className="space-y-1">
+            {archivos.map((a) => (
+              <li key={a.path ?? a.nombre} className="group flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-surface-raised text-[12px]">
+                <Paperclip className="size-3.5 text-text-subtle shrink-0" />
+                <span className="flex-1 truncate" title={a.nombre}>{a.nombre}</span>
+                <span className="text-text-subtle tnum shrink-0">{a.peso}</span>
+                <button type="button" onClick={() => bajar(a)} aria-label={`Descargar ${a.nombre}`} title="Descargar" className="grid place-items-center size-6 rounded-md text-text-muted hover:text-text-primary hover:bg-surface"><Download className="size-3.5" /></button>
+                <button type="button" onClick={() => quitar(a)} aria-label={`Sacar ${a.nombre}`} title="Sacar" className="grid place-items-center size-6 rounded-md text-text-muted hover:text-rojo hover:bg-surface opacity-0 group-hover:opacity-100 focus:opacity-100"><X className="size-3.5" /></button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <button type="button" onClick={() => input.current?.click()} className="w-full rounded-xl border border-dashed border-border px-3 py-5 text-center text-[12px] text-text-muted hover:border-border-hover hover:text-text-secondary">
+          Tocá para subir o arrastrá acá PDFs, imágenes o videos. Se ven sin descargarlos.
+        </button>
+      )}
+    </section>
+  );
 }

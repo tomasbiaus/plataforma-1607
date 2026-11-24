@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { supabase } from './lib/supabase';
 import {
   CLIENTES, EQUIPO, ETAPAS, terminado, HOY, fecha, hace, esAdmin, adminId, slug,
-  type Proyecto, type Tarea, type EstadoEntrega, type EstadoTarea, type Pago, type CobroExtra, type PagoEquipo, type Entrega, aEmail } from './data';
+  type Proyecto, type Tarea, type EstadoEntrega, type EstadoTarea, type Pago, type CobroExtra, type PagoEquipo, type Entrega, type Archivo, aEmail } from './data';
 import { PLANES, tareasDePlantilla, type Plan } from './plantilla';
 
 export type Sesion = { tipo: 'estudio'; persona: string } | { tipo: 'cliente'; proyecto: string } | null;
@@ -42,6 +42,8 @@ type Store = {
   setEstadoEntrega: (pid: string, eid: string, estado: EstadoEntrega, feedback?: { autor: string; texto: string }) => Promise<void>;
   subirArchivo: (pid: string, eid: string, file: File) => Promise<void>;
   urlArchivo: (path: string) => Promise<string | null>;
+  subirArchivosTarea: (tid: string, files: File[]) => Promise<Archivo[]>;
+  quitarArchivoTarea: (path: string) => Promise<void>;
   /** link para ver el archivo en la página (sin descargar), dura 1 hora */
   urlVista: (path: string) => Promise<string | null>;
   toggleTarea: (tid: string) => void;
@@ -230,7 +232,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         id: t.id, cliente: clavePorId[t.cliente_id] ?? '', proyecto: t.proyecto_id ?? undefined, titulo: t.titulo,
         quien: (resp.data ?? []).filter((x: any) => x.tarea_id === t.id).map((x: any) => x.profile_id),
         estado: t.estado, prioridad: t.prioridad, inicio: t.inicio, fin: t.fin, equipo: t.equipo ?? [], etapa: t.etapa ?? undefined,
-        privada: t.privada, archivada: !!t.archivada, plantilla: t.plantilla, notion: t.notion, notas: t.notas ?? '', checklist: t.checklist ?? [], links: t.links ?? [],
+        privada: t.privada, archivada: !!t.archivada, plantilla: t.plantilla, notion: t.notion, notas: t.notas ?? '', checklist: t.checklist ?? [], links: t.links ?? [], archivos: t.archivos ?? [],
         historial: (hist.data ?? []).filter((h: any) => h.tarea_id === t.id).map((h: any) => ({ quien: quienDe(h.tipo, h.quien), texto: h.texto, cuando: hace(h.creado) })),
       })));
       setSesion((s) => (s?.tipo === 'estudio' ? s : { tipo: 'estudio', persona: yo.id }));
@@ -369,6 +371,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       } catch (e) { fallo(e); }
       await recargar();
     },
+    subirArchivosTarea: async (tid, files) => {
+      const hechos: Archivo[] = [];
+      for (const file of files) {
+        const path = `tareas/${tid}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
+        const up = await supabase.storage.from('entregas').upload(path, file);
+        if (up.error) { fallo(up.error); continue; }
+        const kb = file.size / 1024;
+        const peso = kb > 1024 ? `${(kb / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.round(kb)} KB`;
+        hechos.push({ id: path, nombre: file.name, tipo: (file.name.split('.').pop() ?? '').toUpperCase().slice(0, 4), peso, path });
+      }
+      return hechos;
+    },
+    quitarArchivoTarea: async (path) => {
+      const { error } = await supabase.storage.from('entregas').remove([path]);
+      if (error) fallo(error);
+    },
     subirArchivo: async (pid, eid, file) => {
       const path = `${pid}/${eid}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`;
       const up = await supabase.storage.from('entregas').upload(path, file);
@@ -431,7 +449,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     actualizarTarea: (tid, patch, log) => {
       setTareas((ts) => ts.map((x) => (x.id === tid ? { ...x, ...patch, historial: log ? [...(x.historial ?? []), { quien: (sesion as any)?.persona, texto: log, cuando: 'Recién' }] : x.historial } : x)));
       const cols: Record<string, any> = {};
-      (['titulo', 'prioridad', 'inicio', 'fin', 'equipo', 'notas', 'checklist', 'links', 'privada'] as const).forEach((k) => { if (k in patch) cols[k] = (patch as any)[k] ?? null; });
+      (['titulo', 'prioridad', 'inicio', 'fin', 'equipo', 'notas', 'checklist', 'links', 'privada', 'archivos'] as const).forEach((k) => { if (k in patch) cols[k] = (patch as any)[k] ?? null; });
       if (Object.keys(cols).length) {
         debounce('t-' + tid + Object.keys(cols).join(), async () => {
           const { error } = await supabase.from('tareas').update(cols).eq('id', tid);

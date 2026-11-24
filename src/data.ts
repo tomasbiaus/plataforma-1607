@@ -63,6 +63,7 @@ export type Tarea = {
   notas?: string;
   checklist?: { id: string; texto: string; hecha: boolean }[];
   links?: { titulo: string; url: string }[];
+  archivos?: Archivo[]; // documentos adjuntos al pedido
   historial?: { quien: string; texto: string; cuando: string }[];
 };
 export type Actividad = { quien: string; texto: string; cuando: string; ts?: string };
